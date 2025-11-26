@@ -1,0 +1,9 @@
+{
+  "name": "MedSurplus Connect",
+  "description": "A platform connecting healthcare facilities to redistribute surplus medical supplies efficiently and securely.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
