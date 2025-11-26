@@ -3,104 +3,141 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const AddSupply: React.FC = () => {
+const AddMedicine: React.FC = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     quantity: '',
-    expiry: '',
-    category: ''
+    quantity_unit: '',
+    expiry_date: '',
+    distance_km: '',
+    image_url: '',
+    category: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('You must be logged in');
+
+      const res = await fetch('http://localhost:4000/stock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          quantity: Number(formData.quantity),
+          quantity_unit: formData.quantity_unit,
+          expiry_date: formData.expiry_date,
+          distance_km: Number(formData.distance_km),
+          image_url: formData.image_url,
+          category: formData.category,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to add medicine: ${text}`);
+      }
+
+      // Redirect to dashboard or stock list
+      router.push('/dashboard'); // <-- change this if your dashboard route is different
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to add medicine');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
-      <header className="px-4 py-4 flex items-center gap-4 bg-white/50 dark:bg-surface-dark/50 backdrop-blur border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
+      <header className="px-4 py-4 flex items-center gap-4 bg-white dark:bg-surface-dark sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800">
         <button onClick={() => router.back()} className="p-1">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold">Add New Supply</h1>
+        <h1 className="text-lg font-bold">Add New Medicine</h1>
       </header>
 
-      <main className="flex-1 p-4 space-y-6">
-        
-        {/* Name Input */}
-        <div>
-          <label className="block text-sm font-bold mb-2">Item Name</label>
-          <input 
-            value={formData.name}
-            onChange={e => setFormData({...formData, name: e.target.value})}
-            placeholder="e.g. N95 Masks"
-            className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-surface-dark focus:ring-2 focus:ring-primary outline-none dark:text-white"
-          />
-        </div>
+      <main className="flex-1 p-4 space-y-4 max-w-xl mx-auto">
+        {error && <p className="text-red-500">{error}</p>}
 
-        {/* Quantity */}
-        <div>
-           <label className="block text-sm font-bold mb-2">Quantity Available</label>
-           <div className="relative">
-              <input 
-                type="number" 
-                value={formData.quantity}
-                onChange={e => setFormData({...formData, quantity: e.target.value})}
-                placeholder="Enter a number" 
-                className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-surface-dark focus:ring-2 focus:ring-primary outline-none dark:text-white"
-              />
-              <div className="absolute right-2 top-1 bottom-1 flex gap-1">
-                 <button className="size-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg">
-                    <span className="material-symbols-outlined">remove</span>
-                 </button>
-                 <button className="size-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg">
-                    <span className="material-symbols-outlined">add</span>
-                 </button>
-              </div>
-           </div>
-        </div>
-
-        {/* Expiry */}
-        <div>
-           <label className="block text-sm font-bold mb-2">Expiration Date</label>
-           <div className="relative">
-              <input 
-                type="date"
-                value={formData.expiry}
-                onChange={e => setFormData({...formData, expiry: e.target.value})}
-                className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-surface-dark focus:ring-2 focus:ring-primary outline-none dark:text-white"
-              />
-              <span className="material-symbols-outlined absolute right-4 top-3 text-gray-400 pointer-events-none">calendar_today</span>
-           </div>
-        </div>
-
-        {/* Category */}
-        <div>
-           <label className="block text-sm font-bold mb-2">Item Type</label>
-           <div className="relative">
-             <select 
-                value={formData.category}
-                onChange={e => setFormData({...formData, category: e.target.value})}
-                className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-surface-dark focus:ring-2 focus:ring-primary outline-none dark:text-white appearance-none"
-             >
-                <option value="" disabled>Select a category</option>
-                <option value="ppe">PPE</option>
-                <option value="medication">Medication</option>
-                <option value="equipment">Equipment</option>
-                <option value="disposables">Disposables</option>
-             </select>
-             <span className="material-symbols-outlined absolute right-4 top-3 text-gray-400 pointer-events-none">expand_more</span>
-           </div>
-        </div>
-
+        <input
+          placeholder="Medicine Name"
+          value={formData.name}
+          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <textarea
+          placeholder="Description"
+          value={formData.description}
+          onChange={e => setFormData({ ...formData, description: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <input
+          placeholder="Quantity"
+          type="number"
+          value={formData.quantity}
+          onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <input
+          placeholder="Quantity Unit (e.g., boxes, units)"
+          value={formData.quantity_unit}
+          onChange={e => setFormData({ ...formData, quantity_unit: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <input
+          type="date"
+          value={formData.expiry_date}
+          onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <input
+          placeholder="Distance in KM"
+          type="number"
+          value={formData.distance_km}
+          onChange={e => setFormData({ ...formData, distance_km: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <input
+          placeholder="Image URL"
+          value={formData.image_url}
+          onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        />
+        <select
+          value={formData.category}
+          onChange={e => setFormData({ ...formData, category: e.target.value })}
+          className="w-full p-3 border rounded-xl"
+        >
+          <option value="">Select Category</option>
+          <option value="Antalgique">Antalgique</option>
+          <option value="PPE">PPE</option>
+          <option value="Digestif">Digestif</option>
+          <option value="Equipment">Equipment</option>
+        </select>
       </main>
 
-      <footer className="p-4 bg-white/90 dark:bg-surface-dark/90 border-t border-gray-200 dark:border-gray-800">
-         <button 
-            onClick={() => router.push('/manage-surplus')}
-            className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-primary-dark transition-colors"
-         >
-            Add Item
-         </button>
+      <footer className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-surface-dark">
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full p-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-colors"
+        >
+          {loading ? 'Adding...' : 'Add Medicine'}
+        </button>
       </footer>
     </div>
   );
 };
 
-export default AddSupply;
+export default AddMedicine;
