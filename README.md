@@ -29,15 +29,21 @@ To run the BACKEND locally, follow these steps:
 2.  **Set Up PostgreSQL**
    *Make sure PostgreSQL is installed and running.
    *Open a terminal and log in as the PostgreSQL user:
+    
     psql -U postgres
 
     *Create the database:
+    
     CREATE DATABASE myapp;
 
    *Run migrations to create the tables:
+   
    \i path/to/backend/migrations/create_user_table.sql
+   
    \i path/to/backend/migrations/create_requests_table.sql
+   
    \i path/to/backend/migrations/create_medicine_table.sql
+   
    ⚠️⚠️ Adjust the paths to match your repo structure.
 
 3.  **Configure Environment Variables**
