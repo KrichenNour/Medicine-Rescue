@@ -49,12 +49,8 @@ To run the BACKEND locally, follow these steps:
 3.  **Configure Environment Variables**
 IN .env file in the backend :
 
-PG_USER=postgres
 PG_PASSWORD=*****   # Replace with your PostgreSQL password
-PG_HOST=localhost
-PG_PORT=5432
-PG_DATABASE=myapp
-JWT_SECRET=VotreSecretPourJWT
+
 
 4.  **Run the Backend**
 node server.js
