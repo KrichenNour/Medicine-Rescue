@@ -21,30 +21,26 @@ To run the project locally, follow these steps:
     Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 
-To run the project locally, follow these steps:
+To run the BACKEND locally, follow these steps:
 
 1.  **Install Dependencies**
    Make sure Node.js and npm are installed. Then, in the project folder:
    npm install
 2.  **Set Up PostgreSQL**
-*Make sure PostgreSQL is installed and running.
-*Open a terminal and log in as the PostgreSQL user:
-psql -U postgres
+   *Make sure PostgreSQL is installed and running.
+   *Open a terminal and log in as the PostgreSQL user:
+    psql -U postgres
 
+    *Create the database:
+    CREATE DATABASE myapp;
 
-*Create the database:
-CREATE DATABASE myapp;
+   *Run migrations to create the tables:
+   \i path/to/backend/migrations/create_user_table.sql
+   \i path/to/backend/migrations/create_requests_table.sql
+   \i path/to/backend/migrations/create_medicine_table.sql
+   ⚠️⚠️ Adjust the paths to match your repo structure.
 
-*Run migrations to create the tables:
-
-\i path/to/backend/migrations/create_user_table.sql
-\i path/to/backend/migrations/create_requests_table.sql
-\i path/to/backend/migrations/create_medicine_table.sql
-
-⚠️⚠️ Adjust the paths to match your repo structure.
-
-3.**Configure Environment Variables**
-
+3.  **Configure Environment Variables**
 IN .env file in the backend :
 
 PG_USER=postgres
@@ -54,7 +50,7 @@ PG_PORT=5432
 PG_DATABASE=myapp
 JWT_SECRET=VotreSecretPourJWT
 
-4.**Run the Backend**
+4.  **Run the Backend**
 node server.js
 
 
