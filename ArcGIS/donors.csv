@@ -1,0 +1,4 @@
+donor_id,name,type,address,latitude,longitude,working_hours
+d1,"Pharmacy El Hana","Pharmacy","Rue de Tunis 12, Tunis",36.8065,10.1815,"8:00-20:00"
+d2,"Clinique Sidi","Clinic","Avenue Habib, Tunis",36.8001,10.1850,"9:00-18:00"
+d3,"Hopital Zitouna","Hospital","Boulevard 20 Mars, Tunis",36.8100,10.1700,"24/7"
