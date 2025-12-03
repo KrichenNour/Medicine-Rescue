@@ -1,0 +1,6 @@
+supply_id,donor_id,name,category,quantity,expiration_date,status
+s1,d1,"Sterile Bandage","Supplies",50,2026-04-01,Available
+s2,d1,"Gloves (L)","Supplies",200,2025-12-31,Available
+s3,d2,"Paracetamol 500mg","Medication",100,2025-11-30,Available
+s4,d3,"Saline 500ml","Supplies",30,2025-10-15,Available
+s5,d3,"Antibiotic A","Medication",20,2026-02-20,Available
