@@ -11,13 +11,13 @@ const getById = async (id) => {
   return res.rows[0];
 };
 
-const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category }) => {
+const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category, latitude, longitude, donor_name, donor_address, donor_type, working_hours }) => {
   const res = await pool.query(
     `INSERT INTO medicine
-     (name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     (name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category, latitude, longitude, donor_name, donor_address, donor_type, working_hours)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING *`,
-    [name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category]
+    [name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category, latitude, longitude, donor_name, donor_address, donor_type, working_hours]
   );
   return res.rows[0];
 };
@@ -48,11 +48,45 @@ const listLowStock = async (threshold = 5) => {
   return res.rows;
 };
 
+const getMapLocations = async () => {
+  const res = await pool.query(
+    `SELECT id, name, description, quantity, quantity_unit, expiry_date, category, 
+            latitude, longitude, donor_name, donor_address, donor_type, working_hours, distance_km
+     FROM medicine 
+     WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+     ORDER BY name`
+  );
+  return res.rows;
+};
+
+const getMapLocationsByRadius = async (centerLat, centerLon, radiusKm = 50) => {
+  // Using Haversine formula approximation for distance calculation
+  const res = await pool.query(
+    `SELECT id, name, description, quantity, quantity_unit, expiry_date, category,
+            latitude, longitude, donor_name, donor_address, donor_type, working_hours,
+            (
+              6371 * acos(
+                cos(radians($1)) * cos(radians(latitude)) * 
+                cos(radians(longitude) - radians($2)) + 
+                sin(radians($1)) * sin(radians(latitude))
+              )
+            ) AS distance_km
+     FROM medicine
+     WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+     HAVING distance_km <= $3
+     ORDER BY distance_km`,
+    [centerLat, centerLon, radiusKm]
+  );
+  return res.rows;
+};
+
 module.exports = {
   listAll,
   getById,
   create,
   update,
   remove,
-  listLowStock
+  listLowStock,
+  getMapLocations,
+  getMapLocationsByRadius
 };
