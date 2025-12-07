@@ -144,7 +144,8 @@ const MyRequests: React.FC = () => {
           .map(req => (
             <div
               key={req.id}
-              className="bg-white dark:bg-surface-dark p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
+              onClick={() => router.push(`/route/${req.id}`)}
+              className="bg-white dark:bg-surface-dark p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4 cursor-pointer"
             >
               <div className="flex items-start gap-4">
                 <div className="size-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
