@@ -13,6 +13,14 @@ const createRequest = async ({ user_id, medicine_name, quantity }) => {
   return res.rows[0];
 };
 
+const getRequestById = async (id, userId) => {
+  const res = await pool.query(
+    'SELECT * FROM requests WHERE id = $1 AND user_id = $2',
+    [id, userId]
+  );
+  return res.rows[0];
+};
+
 const updateRequestStatus = async (id, status) => {
   const res = await pool.query(
     `UPDATE requests SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
@@ -21,4 +29,4 @@ const updateRequestStatus = async (id, status) => {
   return res.rows[0];
 };
 
-module.exports = { listAllByUser, createRequest, updateRequestStatus };
+module.exports = { listAllByUser, getRequestById, createRequest, updateRequestStatus };
