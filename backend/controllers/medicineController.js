@@ -79,4 +79,26 @@ const getAllMedicines = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
-module.exports = { getAllMedicines, getAll, getOne, createOne, updateOne, deleteOne, getLowStock };
+
+const getMapLocations = async (req, res) => {
+  try {
+    const { lat, lon, radius } = req.query;
+    
+    let locations;
+    if (lat && lon) {
+      const centerLat = parseFloat(lat);
+      const centerLon = parseFloat(lon);
+      const radiusKm = radius ? parseFloat(radius) : 50;
+      locations = await medicineModel.getMapLocationsByRadius(centerLat, centerLon, radiusKm);
+    } else {
+      locations = await medicineModel.getMapLocations();
+    }
+    
+    res.json(locations);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch map locations' });
+  }
+};
+
+module.exports = { getAllMedicines, getAll, getOne, createOne, updateOne, deleteOne, getLowStock, getMapLocations };
