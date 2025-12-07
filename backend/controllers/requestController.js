@@ -28,6 +28,22 @@ const createRequest = async (req, res) => {
   }
 };
 
+const getRequestById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await requestModel.getRequestById(id, req.user.id);
+    
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch request' });
+  }
+};
+
 const updateRequestStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -40,4 +56,4 @@ const updateRequestStatus = async (req, res) => {
   }
 };
 
-module.exports = { getMyRequests, createRequest, updateRequestStatus };
+module.exports = { getMyRequests, getRequestById, createRequest, updateRequestStatus };
