@@ -1,24 +1,50 @@
-const pool = require('../db');
+const mongoose = require('mongoose');
+
+const requestSchema = new mongoose.Schema({
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  medicine_name: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    default: 'Pending',
+    enum: ['Pending', 'Approved', 'Delivered', 'Cancelled']
+  }
+}, {
+  timestamps: true
+});
+
+const Request = mongoose.model('Request', requestSchema);
 
 const listAllByUser = async (userId) => {
-  const res = await pool.query('SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
-  return res.rows;
+  return await Request.find({ user_id: userId }).sort({ createdAt: -1 });
 };
 
 const createRequest = async ({ user_id, medicine_name, quantity }) => {
-  const res = await pool.query(
-    `INSERT INTO requests (user_id, medicine_name, quantity) VALUES ($1,$2,$3) RETURNING *`,
-    [user_id, medicine_name, quantity]
-  );
-  return res.rows[0];
+  const request = await Request.create({
+    user_id,
+    medicine_name,
+    quantity
+  });
+  return request;
 };
 
 const updateRequestStatus = async (id, status) => {
-  const res = await pool.query(
-    `UPDATE requests SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
-    [id, status]
+  const request = await Request.findByIdAndUpdate(
+    id,
+    { $set: { status } },
+    { new: true }
   );
-  return res.rows[0];
+  return request;
 };
 
-module.exports = { listAllByUser, createRequest, updateRequestStatus };
+module.exports = { listAllByUser, createRequest, updateRequestStatus, Request };

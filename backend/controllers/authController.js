@@ -12,8 +12,8 @@ const signup = async (req, res) => {
 
     const user = await createUser({ email, password, role });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.status(201).json({ token, user });
+    const token = jwt.sign({ id: user.id, email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.status(201).json({ token, user: { id: user.id, email, role: user.role } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -31,8 +31,9 @@ const login = async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+    const userId = user._id || user.id;
+    const token = jwt.sign({ id: userId, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token, user: { id: userId, email: user.email, role: user.role } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

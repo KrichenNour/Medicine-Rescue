@@ -1,6 +1,5 @@
 // controllers/medicineController.js
 const medicineModel = require('../models/medicineModel');
-const pool = require('../db');
 
 const getAll = async (req, res) => {
   try {
@@ -70,13 +69,15 @@ const getLowStock = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch low stock' });
   }
 };
+
 const getAllMedicines = async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM medicine');
-    res.json(rows);
+    const medicines = await medicineModel.listAll();
+    res.json(medicines);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 };
+
 module.exports = { getAllMedicines, getAll, getOne, createOne, updateOne, deleteOne, getLowStock };

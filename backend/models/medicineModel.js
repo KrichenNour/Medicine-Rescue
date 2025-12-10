@@ -1,51 +1,81 @@
 // models/medicineModel.js
-const pool = require('../db');
+const mongoose = require('mongoose');
+
+const medicineSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  quantity_unit: {
+    type: String
+  },
+  expiry_date: {
+    type: Date
+  },
+  distance_km: {
+    type: Number
+  },
+  image_url: {
+    type: String
+  },
+  category: {
+    type: String
+  }
+}, {
+  timestamps: true
+});
+
+const Medicine = mongoose.model('Medicine', medicineSchema);
 
 const listAll = async () => {
-  const res = await pool.query('SELECT * FROM medicine ORDER BY name');
-  return res.rows;
+  return await Medicine.find().sort({ name: 1 });
 };
 
 const getById = async (id) => {
-  const res = await pool.query('SELECT * FROM medicine WHERE id = $1', [id]);
-  return res.rows[0];
+  return await Medicine.findById(id);
 };
 
 const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category }) => {
-  const res = await pool.query(
-    `INSERT INTO medicine
-     (name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     RETURNING *`,
-    [name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category]
-  );
-  return res.rows[0];
+  const medicine = await Medicine.create({
+    name,
+    description,
+    quantity,
+    quantity_unit,
+    expiry_date,
+    distance_km,
+    image_url,
+    category
+  });
+  return medicine;
 };
 
 const update = async (id, fields) => {
-  // Build dynamic update
-  const keys = Object.keys(fields);
-  if (keys.length === 0) return getById(id);
-
-  const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  const values = [id, ...keys.map(k => fields[k])];
-
-  const res = await pool.query(
-    `UPDATE medicine SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
-    values
+  if (Object.keys(fields).length === 0) return getById(id);
+  
+  const medicine = await Medicine.findByIdAndUpdate(
+    id,
+    { $set: fields },
+    { new: true, runValidators: true }
   );
-
-  return res.rows[0];
+  
+  return medicine;
 };
 
 const remove = async (id) => {
-  await pool.query('DELETE FROM medicine WHERE id = $1', [id]);
+  await Medicine.findByIdAndDelete(id);
   return;
 };
 
 const listLowStock = async (threshold = 5) => {
-  const res = await pool.query('SELECT * FROM medicine WHERE quantity <= $1 ORDER BY quantity ASC', [threshold]);
-  return res.rows;
+  return await Medicine.find({ quantity: { $lte: threshold } }).sort({ quantity: 1 });
 };
 
 module.exports = {
@@ -54,5 +84,6 @@ module.exports = {
   create,
   update,
   remove,
-  listLowStock
+  listLowStock,
+  Medicine
 };

@@ -159,9 +159,9 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {supplies
             .filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .map((item) => (
+            .map((item, idx) => (
               <div
-                key={item.id}
+                key={item.id || item._id || idx}
                 className="bg-white dark:bg-surface-dark rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all group"
               >
                 <div className="h-48 w-full bg-gray-200 relative overflow-hidden">
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
                       <p className={`text-sm font-medium ${item.expiryColor}`}>Expires: {item.expiry}</p>
                     </div>
                     <button
-                      onClick={() => router.push(`/route/${item.id}`)}
+                      onClick={() => router.push(`/route/${item.id || item._id || ''}`)}
                       className="px-6 py-2 bg-primary text-white text-sm font-bold rounded-lg shadow-md hover:bg-primary-dark transition-colors"
                     >
                       Request

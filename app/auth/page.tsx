@@ -33,8 +33,9 @@ const Auth: React.FC = () => {
         return;
       }
 
-      // Save JWT in localStorage
+      // Save JWT and user data in localStorage
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       router.push('/dashboard');
     } catch (err) {
       console.error(err);
