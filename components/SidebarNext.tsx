@@ -9,7 +9,9 @@ const SidebarNext: React.FC = () => {
 
   const navItems = [
     { label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
-    { label: 'My Requests', icon: 'inbox', path: '/requests' },
+    { label: 'My Requests', icon: 'outbox', path: '/requests' },
+    { label: 'Incoming Requests', icon: 'move_to_inbox', path: '/requests/incoming' },
+    { label: 'Manage Surplus', icon: 'inventory_2', path: '/manage-surplus' },
     { label: 'Messages', icon: 'chat_bubble', path: '/messages' },
     { label: 'Profile', icon: 'person', path: '/settings' },
   ];
@@ -23,7 +25,9 @@ const SidebarNext: React.FC = () => {
 
       <nav className="flex-1 px-4 py-4 space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.path || (item.path === '/messages' && pathname.startsWith('/messages'));
+          const isActive = pathname === item.path || 
+            (item.path === '/messages' && pathname.startsWith('/messages')) ||
+            (item.path === '/requests' && pathname.startsWith('/requests'));
           return (
             <button
               key={item.path}
