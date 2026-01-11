@@ -6,6 +6,11 @@ const requestSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  medicine_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Medicine',
+    required: true
+  },
   medicine_name: {
     type: String,
     required: true
@@ -29,9 +34,10 @@ const listAllByUser = async (userId) => {
   return await Request.find({ user_id: userId }).sort({ createdAt: -1 });
 };
 
-const createRequest = async ({ user_id, medicine_name, quantity }) => {
+const createRequest = async ({ user_id, medicine_id, medicine_name, quantity }) => {
   const request = await Request.create({
     user_id,
+    medicine_id,
     medicine_name,
     quantity
   });
