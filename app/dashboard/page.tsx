@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface Supply {
   id: string;
+  _id?: string;
   name: string;
   quantity: string;
   availableQuantity: number;
@@ -135,7 +136,7 @@ const Dashboard: React.FC = () => {
           distanceKm,
           latitude: d.latitude,
           longitude: d.longitude,
-          image: d.image_url || '/images/placeholder.png',
+          image: d.image_url || '',
           category: d.category || 'Other',
           expiryColor:
             d.expiry_date && new Date(d.expiry_date) < new Date()
@@ -287,6 +288,15 @@ const Dashboard: React.FC = () => {
                     src={item.image}
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                      const icon = document.createElement('span');
+                      icon.className = 'material-symbols-outlined text-6xl text-gray-400';
+                      icon.textContent = 'medical_services';
+                      target.parentElement?.appendChild(icon);
+                    }}
                   />
                   <div className="absolute top-3 right-3 bg-white/90 dark:bg-surface-dark/90 px-2 py-1 rounded-lg text-xs font-bold shadow-sm backdrop-blur">
                     {item.distance}
