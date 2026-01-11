@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./db');
@@ -15,6 +16,15 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const upload = require('./middleware/upload');
+
+app.post('/upload', upload.single('image'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const imageUrl = `http://localhost:4000/uploads/${req.file.filename}`;
+    res.json({ imageUrl });
+});
 
 app.use('/auth', authRoutes);
 app.use('/stock', authenticate, stockRoutes);
