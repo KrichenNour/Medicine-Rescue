@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 const Auth: React.FC = () => {
   const router = useRouter();
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
-  const [role, setRole] = useState<'Donor' | 'Recipient'>('Donor');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,10 +21,17 @@ const Auth: React.FC = () => {
       const res = await fetch(`http://localhost:4000${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        setError('Invalid response from server. Make sure the backend is running.');
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok) {
         setError(data.error || 'Something went wrong');
@@ -37,9 +43,13 @@ const Auth: React.FC = () => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       router.push('/dashboard');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Server error');
+      if (err.message?.includes('fetch')) {
+        setError('Cannot connect to server. Make sure the backend is running on port 4000.');
+      } else {
+        setError('Server error: ' + (err.message || 'Unknown error'));
+      }
     } finally {
       setLoading(false);
     }
@@ -54,6 +64,9 @@ const Auth: React.FC = () => {
             <span className="material-symbols-outlined text-primary text-5xl">medical_services</span>
           </div>
           <h1 className="text-2xl font-bold text-text-light dark:text-text-dark">MedSurplus Connect</h1>
+          <p className="text-sm text-text-muted mt-2 text-center">
+            Share and receive medical supplies
+          </p>
         </div>
 
         {/* Toggle */}
@@ -106,32 +119,6 @@ const Auth: React.FC = () => {
               <span className="material-symbols-outlined absolute right-4 top-3 text-gray-400 cursor-pointer">visibility</span>
             </div>
           </div>
-
-          {mode === 'signup' && (
-            <div>
-              <label className="block text-sm font-bold text-text-light dark:text-text-dark mb-2">I am a:</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setRole('Donor')}
-                  className={`flex-1 h-10 rounded-lg border-2 text-sm font-bold transition-colors ${
-                    role === 'Donor' ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 dark:border-gray-700 text-gray-500'
-                  }`}
-                >
-                  Donor
-                </button>
-                <button
-                  onClick={() => setRole('Recipient')}
-                  className={`flex-1 h-10 rounded-lg border-2 text-sm font-bold transition-colors ${
-                    role === 'Recipient'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500'
-                  }`}
-                >
-                  Recipient
-                </button>
-              </div>
-            </div>
-          )}
 
           <button
             onClick={handleAuth}
