@@ -23,11 +23,22 @@ const medicineSchema = new mongoose.Schema({
   distance_km: {
     type: Number
   },
+  latitude: {
+    type: Number
+  },
+  longitude: {
+    type: Number
+  },
   image_url: {
     type: String
   },
   category: {
     type: String
+  },
+  donor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true
@@ -43,7 +54,7 @@ const getById = async (id) => {
   return await Medicine.findById(id);
 };
 
-const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category }) => {
+const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor }) => {
   const medicine = await Medicine.create({
     name,
     description,
@@ -51,21 +62,24 @@ const create = async ({ name, description, quantity, quantity_unit, expiry_date,
     quantity_unit,
     expiry_date,
     distance_km,
+    latitude,
+    longitude,
     image_url,
-    category
+    category,
+    donor
   });
   return medicine;
 };
 
 const update = async (id, fields) => {
   if (Object.keys(fields).length === 0) return getById(id);
-  
+
   const medicine = await Medicine.findByIdAndUpdate(
     id,
     { $set: fields },
     { new: true, runValidators: true }
   );
-  
+
   return medicine;
 };
 
