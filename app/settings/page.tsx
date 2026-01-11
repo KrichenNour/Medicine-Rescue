@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 type AuthUser = {
     email: string;
-    role?: string;
+    name?: string;
 };
 
 const Settings: React.FC = () => {
@@ -27,7 +27,7 @@ const Settings: React.FC = () => {
         if (userStr) {
             try {
                 const userData = JSON.parse(userStr);
-                setUser({ email: userData.email || '', role: userData.role });
+                setUser({ email: userData.email || '', name: userData.name });
             } catch (err) {
                 console.error('Failed to parse user data', err);
                 router.push('/auth');
@@ -56,13 +56,15 @@ const Settings: React.FC = () => {
             <div className="max-w-4xl mx-auto w-full">
                 {/* Profile Card */}
                 <div className="p-4 md:p-6 flex items-center gap-4 border-b border-gray-200 dark:border-gray-800">
-                    <div className="size-16 md:size-20 rounded-full bg-cover bg-center shadow-md" style={{ backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuCdhSLtvGED4tGTzarw979xvvY7dH8C1Eq-WNb327x9NF8kZ_vaSb0Gdy5A5lxuw5HtcuX6zc9YI1QkNSg7WKl-juHp64etGk0P0huwmuYmSFxRUiYzxO403WtSXTSiDIUOo_PPKs8ZJnREvtbEOrpqxnYO75J9WXXGItg565qo-Kz6mcQk1Yzkt068yhzlz5vPweHgtHS_bLKimjEfR85P0BGD_orQywmF4-djGEg7gpC_LkyWz0yu3h5LVAkf7lkEmxj9XYEuJoVd')` }}></div>
+                    <div className="size-16 md:size-20 rounded-full bg-primary/10 flex items-center justify-center shadow-md">
+                        <span className="material-symbols-outlined text-primary text-4xl">person</span>
+                    </div>
                     <div>
                         <h2 className="text-xl font-bold text-text-light dark:text-text-dark">
-                            {user?.email || 'Logged in user'}
+                            {user?.name || user?.email || 'User'}
                         </h2>
                         <p className="text-sm text-text-muted">
-                            {user?.role ? `Role: ${user.role}` : 'Role not set'}
+                            {user?.email}
                         </p>
                     </div>
                 </div>
