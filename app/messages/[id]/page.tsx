@@ -131,11 +131,10 @@ const ChatDetail: React.FC = () => {
               className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[75%] px-4 py-3 rounded-2xl ${
-                  isMe
+                className={`max-w-[75%] px-4 py-3 rounded-2xl ${isMe
                     ? 'bg-primary text-white rounded-br-none shadow-md'
                     : 'bg-white dark:bg-surface-dark text-text-light dark:text-text-dark shadow-sm rounded-bl-none border border-gray-100 dark:border-gray-800'
-                }`}
+                  }`}
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
                 <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-white/80' : 'text-text-muted'}`}>
@@ -168,9 +167,8 @@ const ChatDetail: React.FC = () => {
           <button
             onClick={handleSend}
             disabled={!input.trim()}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              input.trim() ? 'text-primary bg-primary/10 hover:bg-primary hover:text-white' : 'text-gray-400'
-            }`}
+            className={`p-2 rounded-xl transition-all duration-200 ${input.trim() ? 'text-primary bg-primary/10 hover:bg-primary hover:text-white' : 'text-gray-400'
+              }`}
           >
             <span className="material-symbols-outlined font-variation-fill">send</span>
           </button>

@@ -29,11 +29,11 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Earth's radius in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 };
 
@@ -126,16 +126,16 @@ const Dashboard: React.FC = () => {
         // Calculate distance if user location and supply location are available
         let distanceKm: number | null = null;
         let distanceStr = '—';
-        
+
         if (userLocation && d.latitude && d.longitude) {
           distanceKm = calculateDistance(
-            userLocation.lat, 
-            userLocation.lng, 
-            d.latitude, 
+            userLocation.lat,
+            userLocation.lng,
+            d.latitude,
             d.longitude
           );
-          distanceStr = distanceKm < 1 
-            ? `${Math.round(distanceKm * 1000)} m` 
+          distanceStr = distanceKm < 1
+            ? `${Math.round(distanceKm * 1000)} m`
             : `${distanceKm.toFixed(1)} km`;
         } else if (d.distance_km) {
           distanceKm = d.distance_km;
@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
           donorId: d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null,
         };
       });
-      
+
       // Sort by distance (closest first)
       mapped.sort((a: Supply, b: Supply) => {
         if (a.distanceKm === null) return 1;
@@ -256,13 +256,12 @@ const Dashboard: React.FC = () => {
           />
 
           <div className="flex-1"></div>
-          
+
           {/* Location indicator */}
-          <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${
-            userLocation 
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600' 
+          <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${userLocation
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-600'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-          }`}>
+            }`}>
             <span className="material-symbols-outlined text-sm">
               {userLocation ? 'my_location' : 'location_off'}
             </span>
@@ -270,7 +269,7 @@ const Dashboard: React.FC = () => {
               {userLocation ? 'Sorted by distance' : 'Location off'}
             </span>
           </div>
-          
+
           <button
             onClick={() => router.push('/map')}
             className="flex items-center gap-1 px-4 py-2 bg-primary/10 text-primary dark:bg-primary/20 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/20 transition-colors"
@@ -364,19 +363,18 @@ const Dashboard: React.FC = () => {
                           !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
                           item.availableQuantity === 0
                         }
-                        className={`px-6 py-2 text-sm font-bold rounded-lg shadow-md transition-colors ${
-                          item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                        className={`px-6 py-2 text-sm font-bold rounded-lg shadow-md transition-colors ${item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
                             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             : item.availableQuantity === 0
-                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            : 'bg-primary text-white hover:bg-primary-dark'
-                        }`}
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-primary text-white hover:bg-primary-dark'
+                          }`}
                       >
-                        {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() 
-                          ? 'Your Item' 
-                          : item.availableQuantity === 0 
-                          ? 'Unavailable' 
-                          : 'Request'}
+                        {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                          ? 'Your Item'
+                          : item.availableQuantity === 0
+                            ? 'Unavailable'
+                            : 'Request'}
                       </button>
 
                       <button
@@ -385,12 +383,11 @@ const Dashboard: React.FC = () => {
                           !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
                           item.availableQuantity === 0
                         }
-                        className={`p-2 rounded-lg transition-colors ${
-                          item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() ||
-                          item.availableQuantity === 0
+                        className={`p-2 rounded-lg transition-colors ${item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() ||
+                            item.availableQuantity === 0
                             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             : 'bg-primary/10 text-primary hover:bg-primary/20'
-                        }`}
+                          }`}
                         title="Message donor"
                       >
                         <span className="material-symbols-outlined">chat</span>

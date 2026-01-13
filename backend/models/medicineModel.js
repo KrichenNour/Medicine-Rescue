@@ -7,10 +7,10 @@ const medicineSchema = new mongoose.Schema({
     required: true
   },
   ownerId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'User',
-  required: true
-},
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
 
   description: {
     type: String
@@ -68,7 +68,7 @@ const getById = async (id) => {
 const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor, ownerId }) => {
   // Use donor if provided, otherwise use ownerId (for backward compatibility)
   const donorId = donor || ownerId;
-  
+
   const medicine = await Medicine.create({
     ownerId: donorId, // Set ownerId for backward compatibility
     name,
