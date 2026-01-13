@@ -44,10 +44,10 @@ Every user can act as both a **donor** (by adding supplies) and a **recipient** 
 ---
 ## 🗺️ Map Integration
 
-Uses ArcGIS
-Shows supply locations
-Shows user location
-Route planning to supplies
+-Uses ArcGIS
+-Shows supply locations
+-Shows user location
+-Route planning to supplies
 ---
 
 ## ⚙️ Installation & Setup
