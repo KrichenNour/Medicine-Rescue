@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/services/api';
 
 interface Supply {
   id: string;
   _id?: string;
+  ownerId?: string;
   name: string;
   quantity: string;
   availableQuantity: number;
@@ -27,11 +29,11 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Earth's radius in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 };
 
@@ -67,6 +69,34 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  // ✅ Chat button: Start (or reuse) conversation and open it
+  const startChat = async (item: Supply) => {
+    try {
+      const ownerId = item.ownerId || item.donorId;
+      if (!ownerId) {
+        alert("This supply doesn't have an ownerId. Make sure backend saves ownerId.");
+        return;
+      }
+
+      const res = await apiFetch('/conversations', {
+        method: 'POST',
+        body: JSON.stringify({
+          otherUserId: ownerId,
+          stockId: item.id,
+        }),
+      });
+
+      router.push(`/messages/${res.conversationId}`);
+    } catch (e: any) {
+      alert(e.message || 'Failed to start chat');
+    }
+  };
+
+  // ✅ Request button: go to normal request route page (where you submit request)
+  const goToRequest = (item: Supply) => {
+    router.push(`/route/${item.id}`);
+  };
+
   // Fetch supplies from backend
   const fetchSupplies = async () => {
     const token = localStorage.getItem('token');
@@ -83,7 +113,6 @@ const Dashboard: React.FC = () => {
       console.error('Failed to parse token', e);
       setCurrentUserId(null);
     }
-
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -91,31 +120,22 @@ const Dashboard: React.FC = () => {
       if (filters.maxDistance) params.append('maxDistance', filters.maxDistance);
       if (filters.expiry) params.append('expiry', filters.expiry);
 
-      const res = await fetch(`http://localhost:4000/stock?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const data = await apiFetch(`/stock?${params.toString()}`);
 
-      if (res.status === 401) {
-        router.push('/auth'); // redirect if token invalid
-        return;
-      }
-
-      const data = await res.json();
-
-      const mapped = data.map((d: any) => {
+      const mapped: Supply[] = data.map((d: any) => {
         // Calculate distance if user location and supply location are available
         let distanceKm: number | null = null;
         let distanceStr = '—';
-        
+
         if (userLocation && d.latitude && d.longitude) {
           distanceKm = calculateDistance(
-            userLocation.lat, 
-            userLocation.lng, 
-            d.latitude, 
+            userLocation.lat,
+            userLocation.lng,
+            d.latitude,
             d.longitude
           );
-          distanceStr = distanceKm < 1 
-            ? `${Math.round(distanceKm * 1000)} m` 
+          distanceStr = distanceKm < 1
+            ? `${Math.round(distanceKm * 1000)} m`
             : `${distanceKm.toFixed(1)} km`;
         } else if (d.distance_km) {
           distanceKm = d.distance_km;
@@ -124,6 +144,8 @@ const Dashboard: React.FC = () => {
 
         return {
           id: d._id || d.id,
+          _id: d._id,
+          ownerId: d.ownerId || (d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null),
           name: d.name,
           quantity: `${d.quantity} ${d.quantity_unit || ''}`.trim(),
           availableQuantity: d.available_quantity ?? d.quantity,
@@ -136,7 +158,7 @@ const Dashboard: React.FC = () => {
           distanceKm,
           latitude: d.latitude,
           longitude: d.longitude,
-          image: d.image_url || '',
+          image: d.image_url || '/images/placeholder.png',
           category: d.category || 'Other',
           expiryColor:
             d.expiry_date && new Date(d.expiry_date) < new Date()
@@ -145,17 +167,17 @@ const Dashboard: React.FC = () => {
           donorId: d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null,
         };
       });
-      
+
       // Sort by distance (closest first)
       mapped.sort((a: Supply, b: Supply) => {
         if (a.distanceKm === null) return 1;
         if (b.distanceKm === null) return -1;
         return a.distanceKm - b.distanceKm;
       });
-      
       setSupplies(mapped);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      router.push('/auth');
     } finally {
       setLoading(false);
     }
@@ -163,6 +185,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchSupplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, userLocation]);
 
   const handleFilter = (type: 'category' | 'maxDistance' | 'expiry', value: string) => {
@@ -181,6 +204,7 @@ const Dashboard: React.FC = () => {
           </button>
           <h1 className="text-xl md:text-2xl font-bold">Available Supplies</h1>
         </div>
+
         <button
           onClick={() => router.push('/notifications')}
           className="p-2 -mr-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800"
@@ -232,13 +256,12 @@ const Dashboard: React.FC = () => {
           />
 
           <div className="flex-1"></div>
-          
+
           {/* Location indicator */}
-          <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${
-            userLocation 
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600' 
+          <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${userLocation
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-600'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-          }`}>
+            }`}>
             <span className="material-symbols-outlined text-sm">
               {userLocation ? 'my_location' : 'location_off'}
             </span>
@@ -246,7 +269,7 @@ const Dashboard: React.FC = () => {
               {userLocation ? 'Sorted by distance' : 'Location off'}
             </span>
           </div>
-          
+
           <button
             onClick={() => router.push('/map')}
             className="flex items-center gap-1 px-4 py-2 bg-primary/10 text-primary dark:bg-primary/20 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/20 transition-colors"
@@ -280,7 +303,7 @@ const Dashboard: React.FC = () => {
             })
             .map((item, idx) => (
               <div
-                key={item.id || item._id || idx}
+                key={item.id || idx}
                 className="bg-white dark:bg-surface-dark rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all group"
               >
                 <div className="h-48 w-full bg-gray-200 relative overflow-hidden">
@@ -302,6 +325,7 @@ const Dashboard: React.FC = () => {
                     {item.distance}
                   </div>
                 </div>
+
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-bold text-text-light dark:text-text-dark line-clamp-1">
@@ -330,26 +354,45 @@ const Dashboard: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => router.push(`/route/${item.id || ''}`)}
-                      disabled={
-                        !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
-                        item.availableQuantity === 0
-                      }
-                      className={`px-6 py-2 text-sm font-bold rounded-lg shadow-md transition-colors ${
-                        item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
-                          ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+
+                    {/* ✅ Request normal + Chat icon */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => goToRequest(item)}
+                        disabled={
+                          !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
+                          item.availableQuantity === 0
+                        }
+                        className={`px-6 py-2 text-sm font-bold rounded-lg shadow-md transition-colors ${item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : item.availableQuantity === 0
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-primary text-white hover:bg-primary-dark'
+                          }`}
+                      >
+                        {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                          ? 'Your Item'
                           : item.availableQuantity === 0
-                          ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                          : 'bg-primary text-white hover:bg-primary-dark'
-                      }`}
-                    >
-                      {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() 
-                        ? 'Your Item' 
-                        : item.availableQuantity === 0 
-                        ? 'Unavailable' 
-                        : 'Request'}
-                    </button>
+                            ? 'Unavailable'
+                            : 'Request'}
+                      </button>
+
+                      <button
+                        onClick={() => startChat(item)}
+                        disabled={
+                          !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
+                          item.availableQuantity === 0
+                        }
+                        className={`p-2 rounded-lg transition-colors ${item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() ||
+                            item.availableQuantity === 0
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                          }`}
+                        title="Message donor"
+                      >
+                        <span className="material-symbols-outlined">chat</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

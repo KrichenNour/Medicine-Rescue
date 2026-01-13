@@ -50,16 +50,32 @@ const getOne = async (req, res) => {
 const createOne = async (req, res) => {
   try {
     const payload = req.body;
+
+    // ✅ get donor id from JWT middleware (authenticate)
+    const ownerId = req.user?.id;
+    if (!ownerId) {
+      return res.status(401).json({ error: 'Unauthorized: missing user' });
+    }
+
     // validate minimally
     if (!payload.name || payload.quantity === undefined) {
       return res.status(400).json({ error: 'name and quantity are required' });
     }
+
     console.log('[DEBUG] Creating medicine. User ID:', req.user.id);
-    const created = await medicineModel.create({ ...payload, donor: req.user.id });
+    // ✅ attach donor/ownerId automatically (real-life behavior)
+    const created = await medicineModel.create({
+      ...payload,
+      donor: ownerId,
+      ownerId: ownerId
+    });
     console.log('[DEBUG] Medicine created with donor:', created.donor);
     res.status(201).json(created);
   } catch (err) {
     console.error(err);
+    console.log("AUTH HEADER:", req.headers.authorization);
+console.log("REQ.USER:", req.user);
+
     res.status(500).json({ error: 'Failed to create item' });
   }
 };
@@ -122,4 +138,13 @@ const getAllMedicines = async (req, res) => {
 };
 
 // Export getPendingQuantity for use in requestController
-module.exports = { getAllMedicines, getAll, getOne, createOne, updateOne, deleteOne, getLowStock, getPendingQuantity };
+module.exports = {
+  getAllMedicines,
+  getAll,
+  getOne,
+  createOne,
+  updateOne,
+  deleteOne,
+  getLowStock,
+  getPendingQuantity
+};

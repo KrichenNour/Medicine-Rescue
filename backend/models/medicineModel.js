@@ -6,6 +6,12 @@ const medicineSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
   description: {
     type: String
   },
@@ -47,15 +53,24 @@ const medicineSchema = new mongoose.Schema({
 const Medicine = mongoose.model('Medicine', medicineSchema);
 
 const listAll = async () => {
-  return await Medicine.find().sort({ name: 1 });
+  return await Medicine.find()
+    .populate('ownerId', 'name email')
+    .populate('donor', 'name email')
+    .sort({ name: 1 });
 };
 
 const getById = async (id) => {
-  return await Medicine.findById(id);
+  return await Medicine.findById(id)
+    .populate('ownerId', 'name email')
+    .populate('donor', 'name email');
 };
 
-const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor }) => {
+const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor, ownerId }) => {
+  // Use donor if provided, otherwise use ownerId (for backward compatibility)
+  const donorId = donor || ownerId;
+
   const medicine = await Medicine.create({
+    ownerId: donorId, // Set ownerId for backward compatibility
     name,
     description,
     quantity,
@@ -66,10 +81,12 @@ const create = async ({ name, description, quantity, quantity_unit, expiry_date,
     longitude,
     image_url,
     category,
-    donor
+    donor: donorId
   });
+
   return medicine;
 };
+
 
 const update = async (id, fields) => {
   if (Object.keys(fields).length === 0) return getById(id);

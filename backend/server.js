@@ -12,6 +12,8 @@ const authRoutes = require('./routes/auth');
 const stockRoutes = require('./routes/stock');
 const requestRoutes = require('./routes/request');
 const authenticate = require('./middleware/auth');
+const conversationRoutes = require('./routes/conversations');
+
 
 const app = express();
 
@@ -164,6 +166,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/auth', authRoutes);
 app.use('/stock', authenticate, stockRoutes);
 app.use('/requests', requestRoutes);
+app.use('/conversations', authenticate, conversationRoutes);
 
 app.get('/', (req, res) => res.send('API is running - Connected to MongoDB Atlas'));
 
