@@ -41,15 +41,15 @@ Every user can act as both a **donor** (by adding supplies) and a **recipient** 
 4. Users can chat about a request  
 5. Request status is updated  
 
----
+
 ## 🗺️ Map Integration
 
 -Uses ArcGIS
 -Shows supply locations
 -Shows user location
 -Route planning to supplies
----
 
+---
 ## ⚙️ Installation & Setup
 
 ### 1. Clone the project
