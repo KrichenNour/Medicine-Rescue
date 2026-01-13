@@ -12,6 +12,18 @@ type Msg = {
   createdAt: string;
 };
 
+type ConversationInfo = {
+  otherUser: {
+    id: string;
+    name: string;
+    email: string | null;
+  };
+  stock: {
+    id: string;
+    name: string;
+  } | null;
+};
+
 const ChatDetail: React.FC = () => {
   const router = useRouter();
   const params = useParams();
@@ -19,6 +31,7 @@ const ChatDetail: React.FC = () => {
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(true);
+  const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
 
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -36,12 +49,17 @@ const ChatDetail: React.FC = () => {
 
   const myId = getMyId();
 
-  // Fetch messages from backend
+  // Fetch conversation info and messages from backend
   useEffect(() => {
-    const loadMessages = async () => {
+    const loadConversation = async () => {
       try {
-        const data = await apiFetch(`/conversations/${id}/messages`);
-        setMessages(data);
+        // Fetch conversation details and messages in parallel
+        const [convData, messagesData] = await Promise.all([
+          apiFetch(`/conversations/${id}`),
+          apiFetch(`/conversations/${id}/messages`)
+        ]);
+        setConversationInfo(convData);
+        setMessages(messagesData);
       } catch (e) {
         console.error(e);
         router.back();
@@ -50,7 +68,7 @@ const ChatDetail: React.FC = () => {
       }
     };
 
-    if (id) loadMessages();
+    if (id) loadConversation();
   }, [id]);
 
   // Scroll to bottom whenever messages change
@@ -91,12 +109,14 @@ const ChatDetail: React.FC = () => {
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
 
-        {/* Simple title (you can later fetch other user info) */}
+        {/* User name and item info */}
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-text-light dark:text-text-dark leading-tight truncate">
-            Conversation
+            {conversationInfo?.otherUser?.name || 'Chat'}
           </h2>
-          <p className="text-xs text-text-muted">Dynamic chat</p>
+          <p className="text-xs text-text-muted truncate">
+            {conversationInfo?.stock?.name || 'Direct message'}
+          </p>
         </div>
       </header>
 
@@ -131,12 +151,18 @@ const ChatDetail: React.FC = () => {
       {/* Input Area */}
       <div className="p-3 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-end gap-2 bg-gray-100 dark:bg-background-dark rounded-2xl p-2 transition-all focus-within:ring-2 focus-within:ring-primary/20">
-          <textarea
+          <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent border-none outline-none resize-none max-h-32 py-2.5 px-3 dark:text-white text-sm"
-            rows={1}
+            className="flex-1 bg-transparent border-none outline-none py-2.5 px-3 dark:text-white text-sm"
             style={{ minHeight: '44px' }}
           />
           <button

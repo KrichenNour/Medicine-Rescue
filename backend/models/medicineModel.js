@@ -53,11 +53,16 @@ const medicineSchema = new mongoose.Schema({
 const Medicine = mongoose.model('Medicine', medicineSchema);
 
 const listAll = async () => {
-  return await Medicine.find().sort({ name: 1 });
+  return await Medicine.find()
+    .populate('ownerId', 'name email')
+    .populate('donor', 'name email')
+    .sort({ name: 1 });
 };
 
 const getById = async (id) => {
-  return await Medicine.findById(id);
+  return await Medicine.findById(id)
+    .populate('ownerId', 'name email')
+    .populate('donor', 'name email');
 };
 
 const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor, ownerId }) => {

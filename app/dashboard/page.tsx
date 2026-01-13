@@ -256,9 +256,6 @@ const Dashboard: React.FC = () => {
           />
 
           <div className="flex-1"></div>
-<<<<<<< HEAD
-
-=======
           
           {/* Location indicator */}
           <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${
@@ -274,7 +271,6 @@ const Dashboard: React.FC = () => {
             </span>
           </div>
           
->>>>>>> main
           <button
             onClick={() => router.push('/map')}
             className="flex items-center gap-1 px-4 py-2 bg-primary/10 text-primary dark:bg-primary/20 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/20 transition-colors"

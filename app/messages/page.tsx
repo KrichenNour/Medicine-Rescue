@@ -6,9 +6,17 @@ import { apiFetch } from '@/services/api';
 
 type Chat = {
   id: string;
+  otherUser: {
+    id: string;
+    name: string;
+    email: string | null;
+  };
+  stock: {
+    id: string;
+    name: string;
+  } | null;
   lastMessage: string;
   lastMessageAt: string;
-  participants: string[];
 };
 
 const Messages: React.FC = () => {
@@ -19,11 +27,16 @@ const Messages: React.FC = () => {
   useEffect(() => {
     const loadChats = async () => {
       try {
+        console.log('Loading conversations...');
         const data = await apiFetch('/conversations');
+        console.log('Conversations data:', data);
         setChats(data);
       } catch (e) {
-        console.error(e);
-        router.push('/auth');
+        console.error('Failed to load conversations:', e);
+        // Only redirect if it's an auth error
+        if (e?.message?.includes('401') || e?.message?.includes('Unauthorized')) {
+          router.push('/auth');
+        }
       } finally {
         setLoading(false);
       }
@@ -54,17 +67,22 @@ const Messages: React.FC = () => {
               >
                 <div className="relative shrink-0">
                   <img
-                    src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff"
-                    alt="User"
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(chat.otherUser?.name || 'User')}&background=0D8ABC&color=fff`}
+                    alt={chat.otherUser?.name || 'User'}
                     className="size-14 rounded-full object-cover group-hover:scale-105 transition-transform"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
-                    <h3 className="font-bold text-lg truncate">
-                      Conversation
-                    </h3>
-                    <span className="text-xs text-text-muted">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg truncate">
+                        {chat.otherUser?.name || 'Unknown'}
+                      </h3>
+                      <p className="text-xs text-text-muted truncate">
+                        {chat.stock?.name || 'Direct message'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-text-muted ml-2 shrink-0">
                       {chat.lastMessageAt
                         ? new Date(chat.lastMessageAt).toLocaleString()
                         : ''}
