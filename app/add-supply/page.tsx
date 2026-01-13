@@ -1,7 +1,8 @@
-'use client'
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/services/api';
 
 const AddMedicine: React.FC = () => {
   const router = useRouter();
@@ -21,38 +22,37 @@ const AddMedicine: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('You must be logged in');
 
-      const res = await fetch('http://localhost:4000/stock', {
+    try {
+      // Basic validation (frontend)
+      if (!formData.name.trim()) throw new Error('Medicine name is required');
+      if (formData.quantity === '' || Number.isNaN(Number(formData.quantity))) throw new Error('Quantity is required');
+
+      // distance_km is optional; avoid NaN by sending undefined when empty
+      const distanceValue =
+        formData.distance_km === '' ? undefined : Number(formData.distance_km);
+
+      // expiry_date: send null/undefined if empty
+      const expiryValue = formData.expiry_date ? formData.expiry_date : undefined;
+
+      await apiFetch('/stock', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
-          name: formData.name,
-          description: formData.description,
+          name: formData.name.trim(),
+          description: formData.description?.trim() || '',
           quantity: Number(formData.quantity),
-          quantity_unit: formData.quantity_unit,
-          expiry_date: formData.expiry_date,
-          distance_km: Number(formData.distance_km),
-          image_url: formData.image_url,
-          category: formData.category,
+          quantity_unit: formData.quantity_unit?.trim() || '',
+          expiry_date: expiryValue,
+          distance_km: distanceValue,
+          image_url: formData.image_url?.trim() || '',
+          category: formData.category || '',
         }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to add medicine: ${text}`);
-      }
-
-      // Redirect to dashboard or stock list
-      router.push('/dashboard'); // <-- change this if your dashboard route is different
+      router.push('/dashboard');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to add medicine');
+      setError(err?.message || 'Failed to add medicine');
     } finally {
       setLoading(false);
     }
@@ -73,50 +73,57 @@ const AddMedicine: React.FC = () => {
         <input
           placeholder="Medicine Name"
           value={formData.name}
-          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <textarea
           placeholder="Description"
           value={formData.description}
-          onChange={e => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <input
           placeholder="Quantity"
           type="number"
           value={formData.quantity}
-          onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <input
           placeholder="Quantity Unit (e.g., boxes, units)"
           value={formData.quantity_unit}
-          onChange={e => setFormData({ ...formData, quantity_unit: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, quantity_unit: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <input
           type="date"
           value={formData.expiry_date}
-          onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <input
-          placeholder="Distance in KM"
+          placeholder="Distance in KM (optional)"
           type="number"
           value={formData.distance_km}
-          onChange={e => setFormData({ ...formData, distance_km: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, distance_km: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <input
-          placeholder="Image URL"
+          placeholder="Image URL (optional)"
           value={formData.image_url}
-          onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
           className="w-full p-3 border rounded-xl"
         />
+
         <select
           value={formData.category}
-          onChange={e => setFormData({ ...formData, category: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
           className="w-full p-3 border rounded-xl"
         >
           <option value="">Select Category</option>

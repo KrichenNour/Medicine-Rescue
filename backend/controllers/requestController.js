@@ -24,6 +24,8 @@ const createRequest = async (req, res) => {
     res.status(201).json(request);
   } catch (err) {
     console.error(err);
+    
+
     res.status(500).json({ error: 'Failed to create request' });
   }
 };

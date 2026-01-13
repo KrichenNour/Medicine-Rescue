@@ -6,6 +6,12 @@ const medicineSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  ownerId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'User',
+  required: true
+},
+
   description: {
     type: String
   },
@@ -43,8 +49,19 @@ const getById = async (id) => {
   return await Medicine.findById(id);
 };
 
-const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, image_url, category }) => {
+const create = async ({
+  ownerId,
+  name,
+  description,
+  quantity,
+  quantity_unit,
+  expiry_date,
+  distance_km,
+  image_url,
+  category
+}) => {
   const medicine = await Medicine.create({
+    ownerId, // ✅ IMPORTANT
     name,
     description,
     quantity,
@@ -54,8 +71,10 @@ const create = async ({ name, description, quantity, quantity_unit, expiry_date,
     image_url,
     category
   });
+
   return medicine;
 };
+
 
 const update = async (id, fields) => {
   if (Object.keys(fields).length === 0) return getById(id);

@@ -7,6 +7,8 @@ const authRoutes = require('./routes/auth');
 const stockRoutes = require('./routes/stock');
 const requestRoutes = require('./routes/request');
 const authenticate = require('./middleware/auth');
+const conversationRoutes = require('./routes/conversations');
+
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use('/stock', authenticate, stockRoutes);
 app.use('/requests', requestRoutes);
 
 app.get('/', (req, res) => res.send('API is running'));
+app.use('/conversations', authenticate, conversationRoutes);
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

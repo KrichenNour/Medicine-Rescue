@@ -25,14 +25,37 @@ const getOne = async (req, res) => {
 const createOne = async (req, res) => {
   try {
     const payload = req.body;
+
+    // ✅ get donor id from JWT middleware (authenticate)
+    const ownerId = req.user?.id;
+    if (!ownerId) {
+      return res.status(401).json({ error: 'Unauthorized: missing user' });
+    }
+
     // validate minimally
     if (!payload.name || payload.quantity === undefined) {
       return res.status(400).json({ error: 'name and quantity are required' });
     }
-    const created = await medicineModel.create(payload);
+
+    // ✅ attach ownerId automatically (real-life behavior)
+    const created = await medicineModel.create({
+      ownerId,
+      name: payload.name,
+      description: payload.description,
+      quantity: payload.quantity,
+      quantity_unit: payload.quantity_unit,
+      expiry_date: payload.expiry_date,
+      distance_km: payload.distance_km,
+      image_url: payload.image_url,
+      category: payload.category,
+    });
+
     res.status(201).json(created);
   } catch (err) {
     console.error(err);
+    console.log("AUTH HEADER:", req.headers.authorization);
+console.log("REQ.USER:", req.user);
+
     res.status(500).json({ error: 'Failed to create item' });
   }
 };
@@ -80,4 +103,12 @@ const getAllMedicines = async (req, res) => {
   }
 };
 
-module.exports = { getAllMedicines, getAll, getOne, createOne, updateOne, deleteOne, getLowStock };
+module.exports = {
+  getAllMedicines,
+  getAll,
+  getOne,
+  createOne,
+  updateOne,
+  deleteOne,
+  getLowStock
+};
