@@ -10,6 +10,7 @@ const BottomNavNext: React.FC = () => {
   const navItems = [
     { label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
     { label: 'My Requests', icon: 'inbox', path: '/requests' },
+    { label: 'Manage', icon: 'inventory_2', path: '/manage-surplus' },
     { label: 'Messages', icon: 'chat_bubble', path: '/messages' },
     { label: 'Profile', icon: 'person', path: '/settings' },
   ];
@@ -18,7 +19,9 @@ const BottomNavNext: React.FC = () => {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
       <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.path || (item.path === '/messages' && pathname.startsWith('/messages'));
+          const isActive = pathname === item.path || 
+            (item.path === '/messages' && pathname.startsWith('/messages')) ||
+            (item.path === '/requests' && pathname.startsWith('/requests'));
           return (
             <button
               key={item.path}

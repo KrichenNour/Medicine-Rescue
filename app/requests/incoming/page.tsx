@@ -3,13 +3,21 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface Request {
+interface IncomingRequest {
   _id: string;
   medicine_name: string;
   quantity: string;
   status: 'Pending' | 'Approved' | 'Delivered' | 'Cancelled';
   createdAt: string;
-  icon?: string;
+  user_id: {
+    _id: string;
+    email: string;
+  };
+  medicine_id: {
+    _id: string;
+    name: string;
+    image_url?: string;
+  };
 }
 
 const statusColor = (status: string) => {
@@ -22,16 +30,15 @@ const statusColor = (status: string) => {
   }
 };
 
-const MyRequests: React.FC = () => {
+const IncomingRequests: React.FC = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'All' | 'Pending' | 'Approved' | 'Delivered' | 'Cancelled'>('All');
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<IncomingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Fetch requests
-  const fetchRequests = async () => {
+  const fetchIncomingRequests = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -41,7 +48,7 @@ const MyRequests: React.FC = () => {
         return;
       }
 
-      const res = await fetch('http://localhost:4000/requests', {
+      const res = await fetch('http://localhost:4000/requests/incoming', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -50,40 +57,28 @@ const MyRequests: React.FC = () => {
         throw new Error(`Failed to fetch requests: ${text}`);
       }
 
-      const data: Request[] = await res.json();
-      // Map backend response to match our interface
-      const mapped = data.map((req: any) => ({
-        _id: req._id || req.id,
-        medicine_name: req.medicine_name,
-        quantity: req.quantity,
-        status: req.status,
-        createdAt: req.createdAt || req.created_at,
-        icon: req.icon,
-      }));
-      setRequests(mapped);
+      const data: IncomingRequest[] = await res.json();
+      setRequests(data);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to fetch requests');
+      setError(err.message || 'Failed to fetch incoming requests');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRequests();
+    fetchIncomingRequests();
   }, []);
 
-  // Cancel a pending request
-  const handleCancelRequest = async (requestId: string) => {
-    if (!confirm('Are you sure you want to cancel this request?')) return;
-
+  const handleUpdateStatus = async (requestId: string, newStatus: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/auth');
       return;
     }
 
-    setCancellingId(requestId);
+    setUpdatingId(requestId);
     try {
       const res = await fetch(`http://localhost:4000/requests/${requestId}`, {
         method: 'PUT',
@@ -91,24 +86,24 @@ const MyRequests: React.FC = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: 'Cancelled' }),
+        body: JSON.stringify({ status: newStatus }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to cancel request');
+        throw new Error(err.error || 'Failed to update request');
       }
 
-      await fetchRequests();
+      await fetchIncomingRequests();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to cancel request');
+      alert(err.message || 'Failed to update request');
     } finally {
-      setCancellingId(null);
+      setUpdatingId(null);
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading requests...</div>;
+  if (loading) return <div className="p-8 text-center">Loading incoming requests...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
   const filteredRequests = requests.filter(r => activeTab === 'All' || r.status === activeTab);
@@ -121,14 +116,14 @@ const MyRequests: React.FC = () => {
           <button onClick={() => router.back()} className="rounded-full hover:bg-white/10 p-1">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="text-xl md:text-2xl font-bold flex-1">My Requests</h1>
+          <h1 className="text-xl md:text-2xl font-bold flex-1">Incoming Requests</h1>
           <button 
-            onClick={() => router.push('/requests/incoming')}
+            onClick={() => router.push('/requests')}
             className="flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-            title="View incoming requests for your supplies"
+            title="View your outgoing requests"
           >
-            <span className="material-symbols-outlined text-lg">move_to_inbox</span>
-            <span className="hidden sm:inline">Incoming</span>
+            <span className="material-symbols-outlined text-lg">outbox</span>
+            <span className="hidden sm:inline">My Requests</span>
           </button>
         </div>
       </header>
@@ -158,20 +153,12 @@ const MyRequests: React.FC = () => {
           <div className="mb-4">
             <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600">inbox</span>
           </div>
-          <p className="text-text-muted text-lg mb-2">No requests found</p>
+          <p className="text-text-muted text-lg mb-2">No incoming requests</p>
           <p className="text-text-muted text-sm">
             {activeTab === 'All' 
-              ? 'Start by requesting supplies from the dashboard'
+              ? 'You haven\'t received any requests yet'
               : `No ${activeTab.toLowerCase()} requests`}
           </p>
-          {activeTab === 'All' && (
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-colors"
-            >
-              Browse Supplies
-            </button>
-          )}
         </div>
       ) : (
         <div className="p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto">
@@ -181,14 +168,25 @@ const MyRequests: React.FC = () => {
               className="bg-white dark:bg-surface-dark p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
             >
               <div className="flex items-start gap-4">
-                <div className="size-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
-                  <span className="material-symbols-outlined">{req.icon || 'medical_services'}</span>
-                </div>
+                {req.medicine_id?.image_url ? (
+                  <img 
+                    src={req.medicine_id.image_url} 
+                    alt={req.medicine_name}
+                    className="size-16 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="size-16 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                    <span className="material-symbols-outlined">medical_services</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-text-light dark:text-text-dark truncate">{req.medicine_name}</h3>
                   <p className="text-sm text-text-muted">Qty: {req.quantity}</p>
+                  <p className="text-xs text-text-muted mt-1">
+                    Requested by: {req.user_id?.email || 'Unknown'}
+                  </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Requested on {new Date(req.createdAt).toLocaleDateString()}
+                    {new Date(req.createdAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -201,12 +199,34 @@ const MyRequests: React.FC = () => {
                   {req.status}
                 </span>
                 {req.status === 'Pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleUpdateStatus(req._id, 'Approved')}
+                      disabled={updatingId === req._id}
+                      className="px-3 py-1 text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
+                    >
+                      {updatingId === req._id ? '...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to reject this request?')) {
+                          handleUpdateStatus(req._id, 'Cancelled');
+                        }
+                      }}
+                      disabled={updatingId === req._id}
+                      className="px-3 py-1 text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                    >
+                      {updatingId === req._id ? '...' : 'Reject'}
+                    </button>
+                  </div>
+                )}
+                {req.status === 'Approved' && (
                   <button
-                    onClick={() => handleCancelRequest(req._id)}
-                    disabled={cancellingId === req._id}
-                    className="px-3 py-1 text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                    onClick={() => handleUpdateStatus(req._id, 'Delivered')}
+                    disabled={updatingId === req._id}
+                    className="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
                   >
-                    {cancellingId === req._id ? 'Cancelling...' : 'Cancel'}
+                    {updatingId === req._id ? '...' : 'Mark Delivered'}
                   </button>
                 )}
               </div>
@@ -218,4 +238,4 @@ const MyRequests: React.FC = () => {
   );
 };
 
-export default MyRequests;
+export default IncomingRequests;

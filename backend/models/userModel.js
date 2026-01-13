@@ -13,10 +13,9 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  role: {
+  name: {
     type: String,
-    required: true,
-    enum: ['Donor', 'Recipient']
+    trim: true
   }
 }, {
   timestamps: true
@@ -24,17 +23,17 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-const createUser = async ({ email, password, role }) => {
+const createUser = async ({ email, password, name }) => {
   const hashed = await bcrypt.hash(password, 10);
   const user = await User.create({
     email,
     password: hashed,
-    role
+    name: name || null
   });
   return {
     id: user._id,
     email: user.email,
-    role: user.role
+    name: user.name
   };
 };
 

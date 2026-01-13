@@ -6,21 +6,44 @@ import { apiFetch } from '@/services/api';
 
 interface Supply {
   id: string;
-  ownerId: string;
+  _id?: string;
+  ownerId?: string;
   name: string;
   quantity: string;
+  availableQuantity: number;
+  totalQuantity: number;
+  quantityUnit: string;
   expiry: string;
   distance: string;
+  distanceKm: number | null;
+  latitude?: number;
+  longitude?: number;
   image: string;
   expiryColor: string;
   category: string;
+  donorId?: string | null;
 }
+
+// Haversine formula to calculate distance between two coordinates
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+};
 
 const Dashboard: React.FC = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const [filters, setFilters] = useState({
     category: '',
@@ -28,10 +51,29 @@ const Dashboard: React.FC = () => {
     expiry: '',
   });
 
+  // Get user's location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.log('Geolocation error:', error.message);
+        },
+        { enableHighAccuracy: false, timeout: 10000 }
+      );
+    }
+  }, []);
+
   // ✅ Chat button: Start (or reuse) conversation and open it
   const startChat = async (item: Supply) => {
     try {
-      if (!item.ownerId) {
+      const ownerId = item.ownerId || item.donorId;
+      if (!ownerId) {
         alert("This supply doesn't have an ownerId. Make sure backend saves ownerId.");
         return;
       }
@@ -39,7 +81,7 @@ const Dashboard: React.FC = () => {
       const res = await apiFetch('/conversations', {
         method: 'POST',
         body: JSON.stringify({
-          otherUserId: item.ownerId,
+          otherUserId: ownerId,
           stockId: item.id,
         }),
       });
@@ -55,7 +97,22 @@ const Dashboard: React.FC = () => {
     router.push(`/route/${item.id}`);
   };
 
+  // Fetch supplies from backend
   const fetchSupplies = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth');
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userId = payload.id || payload._id || (payload.user && (payload.user.id || payload.user._id));
+      setCurrentUserId(userId || null);
+    } catch (e) {
+      console.error('Failed to parse token', e);
+      setCurrentUserId(null);
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -65,23 +122,58 @@ const Dashboard: React.FC = () => {
 
       const data = await apiFetch(`/stock?${params.toString()}`);
 
-      const mapped: Supply[] = data.map((d: any) => ({
-        id: d._id || d.id,
-        ownerId: d.ownerId,
-        name: d.name,
-        quantity: `${d.quantity} ${d.quantity_unit || ''}`.trim(),
-        expiry: d.expiry_date
-          ? new Date(d.expiry_date).toLocaleString('default', { month: 'short', year: 'numeric' })
-          : 'N/A',
-        distance: d.distance_km ? `${d.distance_km} km` : '—',
-        image: d.image_url || '/images/placeholder.png',
-        category: d.category || 'Other',
-        expiryColor:
-          d.expiry_date && new Date(d.expiry_date) < new Date()
-            ? 'text-red-600 dark:text-red-400'
-            : 'text-green-600 dark:text-green-400',
-      }));
+      const mapped: Supply[] = data.map((d: any) => {
+        // Calculate distance if user location and supply location are available
+        let distanceKm: number | null = null;
+        let distanceStr = '—';
+        
+        if (userLocation && d.latitude && d.longitude) {
+          distanceKm = calculateDistance(
+            userLocation.lat, 
+            userLocation.lng, 
+            d.latitude, 
+            d.longitude
+          );
+          distanceStr = distanceKm < 1 
+            ? `${Math.round(distanceKm * 1000)} m` 
+            : `${distanceKm.toFixed(1)} km`;
+        } else if (d.distance_km) {
+          distanceKm = d.distance_km;
+          distanceStr = `${d.distance_km} km`;
+        }
 
+        return {
+          id: d._id || d.id,
+          _id: d._id,
+          ownerId: d.ownerId || (d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null),
+          name: d.name,
+          quantity: `${d.quantity} ${d.quantity_unit || ''}`.trim(),
+          availableQuantity: d.available_quantity ?? d.quantity,
+          totalQuantity: d.quantity,
+          quantityUnit: d.quantity_unit || 'units',
+          expiry: d.expiry_date
+            ? new Date(d.expiry_date).toLocaleString('default', { month: 'short', year: 'numeric' })
+            : 'N/A',
+          distance: distanceStr,
+          distanceKm,
+          latitude: d.latitude,
+          longitude: d.longitude,
+          image: d.image_url || '/images/placeholder.png',
+          category: d.category || 'Other',
+          expiryColor:
+            d.expiry_date && new Date(d.expiry_date) < new Date()
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-green-600 dark:text-green-400',
+          donorId: d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null,
+        };
+      });
+      
+      // Sort by distance (closest first)
+      mapped.sort((a: Supply, b: Supply) => {
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
       setSupplies(mapped);
     } catch (err: any) {
       console.error(err);
@@ -94,7 +186,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchSupplies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, userLocation]);
 
   const handleFilter = (type: 'category' | 'maxDistance' | 'expiry', value: string) => {
     setFilters((prev) => ({ ...prev, [type]: value }));
@@ -141,8 +233,10 @@ const Dashboard: React.FC = () => {
             className="px-4 py-2 bg-white dark:bg-surface-dark rounded-lg text-sm shadow-sm"
           >
             <option value="">All Categories</option>
+            <option value="Antalgique">Antalgique</option>
             <option value="PPE">PPE</option>
-            <option value="Medicine">Medicine</option>
+            <option value="Digestif">Digestif</option>
+            <option value="Equipment">Equipment</option>
           </select>
 
           <input
@@ -162,7 +256,25 @@ const Dashboard: React.FC = () => {
           />
 
           <div className="flex-1"></div>
+<<<<<<< HEAD
 
+=======
+          
+          {/* Location indicator */}
+          <div className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium ${
+            userLocation 
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-600' 
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+          }`}>
+            <span className="material-symbols-outlined text-sm">
+              {userLocation ? 'my_location' : 'location_off'}
+            </span>
+            <span className="hidden sm:inline">
+              {userLocation ? 'Sorted by distance' : 'Location off'}
+            </span>
+          </div>
+          
+>>>>>>> main
           <button
             onClick={() => router.push('/map')}
             className="flex items-center gap-1 px-4 py-2 bg-primary/10 text-primary dark:bg-primary/20 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/20 transition-colors"
@@ -177,7 +289,23 @@ const Dashboard: React.FC = () => {
       <div className="px-4 md:px-8 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {supplies
-            .filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .filter((s) => {
+              // Search filter
+              if (searchTerm && !s.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                return false;
+              }
+              // Category filter
+              if (filters.category && s.category !== filters.category) {
+                return false;
+              }
+              // Max distance filter
+              if (filters.maxDistance && s.distanceKm !== null) {
+                if (s.distanceKm > parseFloat(filters.maxDistance)) {
+                  return false;
+                }
+              }
+              return true;
+            })
             .map((item, idx) => (
               <div
                 key={item.id || idx}
@@ -188,6 +316,15 @@ const Dashboard: React.FC = () => {
                     src={item.image}
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                      const icon = document.createElement('span');
+                      icon.className = 'material-symbols-outlined text-6xl text-gray-400';
+                      icon.textContent = 'medical_services';
+                      target.parentElement?.appendChild(icon);
+                    }}
                   />
                   <div className="absolute top-3 right-3 bg-white/90 dark:bg-surface-dark/90 px-2 py-1 rounded-lg text-xs font-bold shadow-sm backdrop-blur">
                     {item.distance}
@@ -203,22 +340,61 @@ const Dashboard: React.FC = () => {
 
                   <div className="flex justify-between items-end">
                     <div className="space-y-1">
-                      <p className="text-sm text-text-muted">Qty: {item.quantity}</p>
+                      <p className="text-sm text-text-muted">
+                        Qty: {item.availableQuantity < item.totalQuantity ? (
+                          <span>
+                            <span className={item.availableQuantity === 0 ? 'text-red-500' : 'text-amber-500'}>
+                              {item.availableQuantity}
+                            </span>
+                            <span className="text-gray-400">/{item.totalQuantity}</span>
+                          </span>
+                        ) : (
+                          item.quantity
+                        )}
+                      </p>
                       <p className={`text-sm font-medium ${item.expiryColor}`}>Expires: {item.expiry}</p>
+                      {item.availableQuantity < item.totalQuantity && item.availableQuantity > 0 && (
+                        <p className="text-xs text-amber-500">
+                          {item.totalQuantity - item.availableQuantity} pending
+                        </p>
+                      )}
                     </div>
 
                     {/* ✅ Request normal + Chat icon */}
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => goToRequest(item)}
-                        className="px-6 py-2 bg-primary text-white text-sm font-bold rounded-lg shadow-md hover:bg-primary-dark transition-colors"
+                        disabled={
+                          !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
+                          item.availableQuantity === 0
+                        }
+                        className={`px-6 py-2 text-sm font-bold rounded-lg shadow-md transition-colors ${
+                          item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : item.availableQuantity === 0
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-primary text-white hover:bg-primary-dark'
+                        }`}
                       >
-                        Request
+                        {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() 
+                          ? 'Your Item' 
+                          : item.availableQuantity === 0 
+                          ? 'Unavailable' 
+                          : 'Request'}
                       </button>
 
                       <button
                         onClick={() => startChat(item)}
-                        className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        disabled={
+                          !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
+                          item.availableQuantity === 0
+                        }
+                        className={`p-2 rounded-lg transition-colors ${
+                          item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() ||
+                          item.availableQuantity === 0
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
                         title="Message donor"
                       >
                         <span className="material-symbols-outlined">chat</span>

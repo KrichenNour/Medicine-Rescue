@@ -15,6 +15,8 @@ const AddMedicine: React.FC = () => {
     distance_km: '',
     image_url: '',
     category: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,8 @@ const AddMedicine: React.FC = () => {
           distance_km: distanceValue,
           image_url: formData.image_url?.trim() || '',
           category: formData.category || '',
+          latitude: formData.latitude,
+          longitude: formData.longitude,
         }),
       });
 
@@ -106,21 +110,91 @@ const AddMedicine: React.FC = () => {
           className="w-full p-3 border rounded-xl"
         />
 
-        <input
-          placeholder="Distance in KM (optional)"
-          type="number"
-          value={formData.distance_km}
-          onChange={(e) => setFormData({ ...formData, distance_km: e.target.value })}
-          className="w-full p-3 border rounded-xl"
-        />
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    setFormData({
+                      ...formData,
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude,
+                      distance_km: '0' // Default or calculated
+                    });
+                    alert('Location captured successfully!');
+                  },
+                  (err) => {
+                    console.error(err);
+                    setError('Failed to get location: ' + err.message);
+                  }
+                );
+              } else {
+                setError('Geolocation is not supported by this browser.');
+              }
+            }}
+            className="w-full p-3 border rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined">my_location</span>
+            {formData.latitude ? 'Location Captured' : 'Get Current Location'}
+          </button>
+          {formData.latitude && (
+            <p className="text-xs text-green-600 text-center">
+              Lat: {formData.latitude.toFixed(4)}, Lng: {formData.longitude?.toFixed(4)}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Product Image
+          </label>
+          <div className="flex flex-col items-center gap-4">
+            {formData.image_url && (
+              <img
+                src={formData.image_url}
+                alt="Preview"
+                className="w-full h-48 object-cover rounded-xl shadow-md"
+              />
+            )}
+            <label className="w-full cursor-pointer">
+              <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <span className="material-symbols-outlined text-primary">add_a_photo</span>
+                <span className="text-sm font-medium">Capture or Select Image</span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
 
-        <input
-          placeholder="Image URL (optional)"
-          value={formData.image_url}
-          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-          className="w-full p-3 border rounded-xl"
-        />
+                  setLoading(true);
+                  setError(null);
+                  try {
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('image', file);
 
+                    const res = await fetch('http://localhost:4000/upload', {
+                      method: 'POST',
+                      body: uploadFormData,
+                    });
+
+                    if (!res.ok) throw new Error('Failed to upload image');
+                    const { imageUrl } = await res.json();
+                    setFormData({ ...formData, image_url: imageUrl });
+                  } catch (err: any) {
+                    setError('Image upload failed: ' + err.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </div>
         <select
           value={formData.category}
           onChange={(e) => setFormData({ ...formData, category: e.target.value })}

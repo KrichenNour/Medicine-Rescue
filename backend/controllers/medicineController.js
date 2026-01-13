@@ -1,5 +1,27 @@
 // controllers/medicineController.js
 const medicineModel = require('../models/medicineModel');
+const { Request } = require('../models/requestModel');
+
+// Helper function to calculate pending quantity for a medicine
+const getPendingQuantity = async (medicineId) => {
+  const pendingRequests = await Request.find({
+    medicine_id: medicineId,
+    status: { $in: ['Pending', 'Approved'] } // Count both pending and approved (not yet delivered)
+  });
+  
+  return pendingRequests.reduce((sum, req) => sum + (parseInt(req.quantity) || 0), 0);
+};
+
+// Helper to add available_quantity to medicine object
+const addAvailableQuantity = async (medicine) => {
+  const pendingQty = await getPendingQuantity(medicine._id);
+  const available = Math.max(0, medicine.quantity - pendingQty);
+  return {
+    ...medicine.toObject(),
+    available_quantity: available,
+    pending_quantity: pendingQty
+  };
+};
 
 const getAll = async (req, res) => {
   try {
@@ -15,7 +37,10 @@ const getOne = async (req, res) => {
   try {
     const item = await medicineModel.getById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Not found' });
-    res.json(item);
+    
+    // Add available quantity info
+    const itemWithAvailability = await addAvailableQuantity(item);
+    res.json(itemWithAvailability);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch item' });
@@ -37,19 +62,14 @@ const createOne = async (req, res) => {
       return res.status(400).json({ error: 'name and quantity are required' });
     }
 
-    // ✅ attach ownerId automatically (real-life behavior)
+    console.log('[DEBUG] Creating medicine. User ID:', req.user.id);
+    // ✅ attach donor/ownerId automatically (real-life behavior)
     const created = await medicineModel.create({
-      ownerId,
-      name: payload.name,
-      description: payload.description,
-      quantity: payload.quantity,
-      quantity_unit: payload.quantity_unit,
-      expiry_date: payload.expiry_date,
-      distance_km: payload.distance_km,
-      image_url: payload.image_url,
-      category: payload.category,
+      ...payload,
+      donor: ownerId,
+      ownerId: ownerId
     });
-
+    console.log('[DEBUG] Medicine created with donor:', created.donor);
     res.status(201).json(created);
   } catch (err) {
     console.error(err);
@@ -74,6 +94,14 @@ const updateOne = async (req, res) => {
 
 const deleteOne = async (req, res) => {
   try {
+    const item = await medicineModel.getById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+
+    // Check ownership
+    if (item.donor && item.donor.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You are not authorized to delete this supply' });
+    }
+
     await medicineModel.remove(req.params.id);
     res.status(204).send();
   } catch (err) {
@@ -96,13 +124,20 @@ const getLowStock = async (req, res) => {
 const getAllMedicines = async (req, res) => {
   try {
     const medicines = await medicineModel.listAll();
-    res.json(medicines);
+    
+    // Add available quantity for each medicine
+    const medicinesWithAvailability = await Promise.all(
+      medicines.map(async (med) => await addAvailableQuantity(med))
+    );
+    
+    res.json(medicinesWithAvailability);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 };
 
+// Export getPendingQuantity for use in requestController
 module.exports = {
   getAllMedicines,
   getAll,
@@ -110,5 +145,6 @@ module.exports = {
   createOne,
   updateOne,
   deleteOne,
-  getLowStock
+  getLowStock,
+  getPendingQuantity
 };

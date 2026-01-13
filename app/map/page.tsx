@@ -8,55 +8,15 @@ type SupplyPoint = {
   id: string;
   name: string;
   quantity: string;
+  availableQuantity: number;
+  totalQuantity: number;
   category: string;
   latitude: number;
   longitude: number;
   location: string;
   distance: string;
+  donorId: string;
 };
-
-const supplyPoints: SupplyPoint[] = [
-  {
-    id: 's1',
-    name: 'Sterile Bandage',
-    quantity: '50 units',
-    category: 'Supplies',
-    latitude: 36.8065,
-    longitude: 10.1815,
-    location: 'Pharmacy El Hana',
-    distance: '0.8 km',
-  },
-  {
-    id: 's2',
-    name: 'Gloves (L)',
-    quantity: '200 boxes',
-    category: 'Supplies',
-    latitude: 36.8001,
-    longitude: 10.185,
-    location: 'Clinique Sidi',
-    distance: '1.4 km',
-  },
-  {
-    id: 's3',
-    name: 'Paracetamol 500mg',
-    quantity: '100 blisters',
-    category: 'Medication',
-    latitude: 36.804,
-    longitude: 10.182,
-    location: 'Association Secours',
-    distance: '2.3 km',
-  },
-  {
-    id: 's4',
-    name: 'Saline 500ml',
-    quantity: '30 units',
-    category: 'Supplies',
-    latitude: 36.81,
-    longitude: 10.17,
-    location: 'Hopital Zitouna',
-    distance: '3.1 km',
-  },
-];
 
 // Dynamically import the map component to avoid SSR issues
 const MapComponent = dynamic(() => import('./MapComponent'), {
@@ -72,6 +32,148 @@ const MapComponent = dynamic(() => import('./MapComponent'), {
 
 const SupplyMap: React.FC = () => {
   const router = useRouter();
+  const [supplyPoints, setSupplyPoints] = useState<SupplyPoint[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('[DEBUG] Token payload:', payload);
+        const userId = payload.id || payload._id || (payload.user && (payload.user.id || payload.user._id));
+        setCurrentUserId(userId);
+      } catch (e) {
+        console.error('Failed to parse token', e);
+      }
+    }
+
+    const fetchSupplies = async () => {
+      try {
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('http://localhost:4000/stock', { headers });
+        if (!res.ok) throw new Error('Failed to fetch stock');
+        const data = await res.json();
+        console.log('[DEBUG] Fetched stock data sample:', data[0]);
+
+        const mapped: SupplyPoint[] = data.map((item: any) => ({
+          id: item._id,
+          name: item.name,
+          quantity: `${item.quantity} ${item.quantity_unit || ''}`,
+          availableQuantity: item.available_quantity ?? item.quantity,
+          totalQuantity: item.quantity,
+          category: item.category || 'Supplies',
+          latitude: item.latitude || 0,
+          longitude: item.longitude || 0,
+          location: 'Supplier Location',
+          distance: item.distance_km ? `${item.distance_km} km` : 'Unknown',
+          donorId: item.donor ? (typeof item.donor === 'string' ? item.donor : item.donor._id) : null
+        })).filter((p: SupplyPoint) => p.latitude && p.longitude);
+
+        setSupplyPoints(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchSupplies();
+  }, []);
+
+  const handleRequest = async (e: React.MouseEvent, item: SupplyPoint) => {
+    e.stopPropagation();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('You must be logged in to request supplies');
+      router.push('/auth');
+      return;
+    }
+
+    console.log('[DEBUG] Comparing donor:', item.donorId, 'with current user:', currentUserId);
+
+    if (item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) {
+      alert('You cannot request your own medicine');
+      return;
+    }
+
+    if (item.availableQuantity <= 0) {
+      alert('This item is no longer available');
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:4000/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          medicine_id: item.id,
+          medicine_name: item.name,
+          quantity: "1" // Default quantity of 1
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to request');
+      }
+
+      alert('Request sent successfully!');
+      // Refresh supplies to update available quantities
+      const refreshRes = await fetch('http://localhost:4000/stock', { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        const mapped: SupplyPoint[] = data.map((d: any) => ({
+          id: d._id,
+          name: d.name,
+          quantity: `${d.quantity} ${d.quantity_unit || ''}`,
+          availableQuantity: d.available_quantity ?? d.quantity,
+          totalQuantity: d.quantity,
+          category: d.category || 'Supplies',
+          latitude: d.latitude || 0,
+          longitude: d.longitude || 0,
+          location: 'Supplier Location',
+          distance: d.distance_km ? `${d.distance_km} km` : 'Unknown',
+          donorId: d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null
+        })).filter((p: SupplyPoint) => p.latitude && p.longitude);
+        setSupplyPoints(mapped);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, item: SupplyPoint) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`http://localhost:4000/stock/${item.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete');
+      }
+
+      setSupplyPoints(prev => prev.filter(p => p.id !== item.id));
+      alert('Supply deleted successfully');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const [selectedItem, setSelectedItem] = useState<SupplyPoint | null>(null);
   const [isSheetVisible, setIsSheetVisible] = useState(true);
   const [dragStart, setDragStart] = useState<number | null>(null);
@@ -90,20 +192,17 @@ const SupplyMap: React.FC = () => {
   const handleDragEnd = (clientY: number) => {
     if (dragStart === null) return;
     const distance = clientY - dragStart;
-    
-    // Swipe down (positive distance) = hide sheet
-    // Swipe up (negative distance) = show sheet
+
     if (distance > minSwipeDistance && isSheetVisible) {
       setIsSheetVisible(false);
     } else if (distance < -minSwipeDistance && !isSheetVisible) {
       setIsSheetVisible(true);
     }
-    
+
     setIsDragging(false);
     setDragStart(null);
   };
 
-  // Touch handlers
   const onTouchStart = (e: React.TouchEvent) => {
     e.stopPropagation();
     handleDragStart(e.touches[0].clientY);
@@ -116,7 +215,6 @@ const SupplyMap: React.FC = () => {
     }
   };
 
-  // Mouse handlers for desktop testing
   const onMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     handleDragStart(e.clientY);
@@ -133,10 +231,6 @@ const SupplyMap: React.FC = () => {
     setSelectedItem(item);
   };
 
-  const resetView = () => {
-    setSelectedItem(null);
-  };
-
   const showSheet = () => {
     setIsSheetVisible(true);
   };
@@ -146,15 +240,8 @@ const SupplyMap: React.FC = () => {
   };
 
   const getCurrentLocation = () => {
-    // Check if geolocation is supported
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser. Please use a modern browser.');
-      return;
-    }
-
-    // Check if we're in a secure context (HTTPS or localhost)
-    if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      setLocationError('Geolocation requires a secure connection (HTTPS). Please access this site via HTTPS.');
+      setLocationError('Geolocation is not supported by your browser.');
       return;
     }
 
@@ -171,42 +258,32 @@ const SupplyMap: React.FC = () => {
       (error) => {
         setIsRequestingLocation(false);
         console.error('Geolocation error:', error);
-        
-        // Use numeric codes for better compatibility
-        const errorCode = error.code || error.constructor?.PERMISSION_DENIED;
-        
+
         switch (error.code) {
-          case 1: // PERMISSION_DENIED
-          case error.PERMISSION_DENIED:
-            setLocationError('Location access denied. Please enable location permissions in your browser settings and try again.');
+          case 1:
+            setLocationError('Location access denied.');
             break;
-          case 2: // POSITION_UNAVAILABLE
-          case error.POSITION_UNAVAILABLE:
-            setLocationError('Location information is unavailable. Please check your GPS/WiFi settings.');
+          case 2:
+            setLocationError('Location information is unavailable.');
             break;
-          case 3: // TIMEOUT
-          case error.TIMEOUT:
-            setLocationError('Location request timed out. Please try again.');
+          case 3:
+            setLocationError('Location request timed out.');
             break;
           default:
-            // More detailed error message
-            const errorMessage = error.message || 'Unknown error';
-            setLocationError(`Unable to get your location. ${errorMessage}. Please ensure location services are enabled and try again.`);
+            setLocationError('Unable to get your location.');
             break;
         }
       },
       {
-        enableHighAccuracy: false, // Changed to false for better compatibility
-        timeout: 15000, // Increased timeout
-        maximumAge: 60000, // Accept cached location up to 1 minute old
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 60000,
       }
     );
   };
 
   return (
-    <div className={`h-screen flex flex-col bg-background-light dark:bg-background-dark relative ${
-      !isSheetVisible ? 'overflow-hidden' : ''
-    }`}>
+    <div className={`h-screen flex flex-col bg-background-light dark:bg-background-dark relative ${!isSheetVisible ? 'overflow-hidden' : ''}`}>
       <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pt-6 bg-gradient-to-b from-black/50 to-transparent">
         <div className="flex items-center justify-between">
           <button
@@ -229,25 +306,21 @@ const SupplyMap: React.FC = () => {
             className="bg-white/90 dark:bg-surface-dark/90 backdrop-blur p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             title="Get my location"
           >
-            <span className={`material-symbols-outlined text-text-light dark:text-text-dark ${
-              isRequestingLocation ? 'animate-spin' : ''
-            }`}>
+            <span className={`material-symbols-outlined text-text-light dark:text-text-dark ${isRequestingLocation ? 'animate-spin' : ''}`}>
               {isRequestingLocation ? 'sync' : userLocation ? 'my_location' : 'location_searching'}
             </span>
           </button>
         </div>
       </div>
 
-      <div className={`relative overflow-hidden bg-gray-200 transition-all duration-300 ${
-        isSheetVisible ? 'flex-1' : 'h-full'
-      }`}>
-        <MapComponent 
-          supplyPoints={supplyPoints} 
-          selectedItem={selectedItem} 
+      <div className={`relative overflow-hidden bg-gray-200 transition-all duration-300 ${isSheetVisible ? 'flex-1' : 'h-full'}`}>
+        <MapComponent
+          supplyPoints={supplyPoints}
+          selectedItem={selectedItem}
           isSheetVisible={isSheetVisible}
           userLocation={userLocation}
         />
-        
+
         {locationError && (
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[1002] bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-sm text-sm">
             <div className="flex items-start gap-2">
@@ -278,7 +351,7 @@ const SupplyMap: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {!isSheetVisible && (
           <button
             onClick={showSheet}
@@ -291,11 +364,8 @@ const SupplyMap: React.FC = () => {
       </div>
 
       <div
-        className={`bg-white dark:bg-surface-dark rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-4 pb-8 z-[1000] -mt-6 transition-transform duration-300 ease-out ${
-          isSheetVisible ? 'translate-y-0 relative' : 'translate-y-full absolute bottom-0 left-0 right-0'
-        }`}
+        className={`bg-white dark:bg-surface-dark rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-4 pb-8 z-[1000] -mt-6 transition-transform duration-300 ease-out ${isSheetVisible ? 'translate-y-0 relative' : 'translate-y-full absolute bottom-0 left-0 right-0'}`}
       >
-        {/* Drag Handle Area */}
         <div
           className="py-3 -mt-4 cursor-grab active:cursor-grabbing select-none"
           onTouchStart={onTouchStart}
@@ -305,21 +375,11 @@ const SupplyMap: React.FC = () => {
           onMouseLeave={onMouseUp}
         >
           <div className="w-12 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full mx-auto mb-2"></div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              hideSheet();
-            }}
-            className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
-            <span>Swipe down or click to hide</span>
-          </button>
         </div>
-        
+
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-lg">Nearby Supplies</h3>
-          <span className="text-xs text-text-muted">Pan & zoom the map to explore</span>
+          <span className="text-xs text-text-muted">Explore items available nearby</span>
         </div>
         <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide" onClick={(e) => e.stopPropagation()}>
           {supplyPoints.map((item) => (
@@ -347,6 +407,42 @@ const SupplyMap: React.FC = () => {
                 <span className="inline-block text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                   {item.category}
                 </span>
+                {item.availableQuantity < item.totalQuantity && (
+                  <span className={`text-[10px] ${item.availableQuantity === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                    {item.availableQuantity}/{item.totalQuantity} avail
+                  </span>
+                )}
+                <div className="flex gap-2 mt-1">
+                  <button
+                    onClick={(e) => handleRequest(e, item)}
+                    disabled={
+                      !!(item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()) ||
+                      item.availableQuantity === 0
+                    }
+                    className={`flex-1 px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                      item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString()
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : item.availableQuantity === 0
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-primary-dark shadow-sm'
+                    }`}
+                  >
+                    {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() 
+                      ? 'Your Item' 
+                      : item.availableQuantity === 0 
+                      ? 'Unavailable' 
+                      : 'Request'}
+                  </button>
+                  {item.donorId && currentUserId && item.donorId.toString() === currentUserId.toString() && (
+                    <button
+                      onClick={(e) => handleDelete(e, item)}
+                      className="px-2 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-colors flex items-center justify-center"
+                      title="Delete Supply"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </button>
           ))}

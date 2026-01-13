@@ -27,6 +27,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ supplyPoints, selectedItem,
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const userLocationCircleRef = useRef<L.Circle | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -47,7 +48,23 @@ const MapComponent: React.FC<MapComponentProps> = ({ supplyPoints, selectedItem,
     // Add zoom control to bottom right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Custom marker icons
+    // Layer group for markers (so we can update/clear when supplyPoints change)
+    const markersLayer = L.layerGroup().addTo(map);
+    markersLayerRef.current = markersLayer;
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markersLayerRef.current = null;
+    };
+  }, []);
+
+  // Update markers when supplyPoints change
+  useEffect(() => {
+    if (!mapRef.current || !markersLayerRef.current) return;
+
     const createIcon = (color: string) => {
       return L.divIcon({
         className: 'custom-marker',
@@ -65,12 +82,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ supplyPoints, selectedItem,
       });
     };
 
-    // Add markers for each supply point
+    markersLayerRef.current.clearLayers();
+
     supplyPoints.forEach((item) => {
       const color = item.category === 'Medication' ? '#8b5cf6' : '#2563eb';
       const marker = L.marker([item.latitude, item.longitude], {
         icon: createIcon(color),
-      }).addTo(map);
+      });
 
       marker.bindPopup(`
         <div style="min-width: 150px;">
@@ -82,14 +100,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ supplyPoints, selectedItem,
           </p>
         </div>
       `);
+
+      marker.addTo(markersLayerRef.current!);
     });
-
-    mapRef.current = map;
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
   }, [supplyPoints]);
 
   // Handle selected item changes

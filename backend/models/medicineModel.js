@@ -29,11 +29,22 @@ const medicineSchema = new mongoose.Schema({
   distance_km: {
     type: Number
   },
+  latitude: {
+    type: Number
+  },
+  longitude: {
+    type: Number
+  },
   image_url: {
     type: String
   },
   category: {
     type: String
+  },
+  donor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true
@@ -49,27 +60,23 @@ const getById = async (id) => {
   return await Medicine.findById(id);
 };
 
-const create = async ({
-  ownerId,
-  name,
-  description,
-  quantity,
-  quantity_unit,
-  expiry_date,
-  distance_km,
-  image_url,
-  category
-}) => {
+const create = async ({ name, description, quantity, quantity_unit, expiry_date, distance_km, latitude, longitude, image_url, category, donor, ownerId }) => {
+  // Use donor if provided, otherwise use ownerId (for backward compatibility)
+  const donorId = donor || ownerId;
+  
   const medicine = await Medicine.create({
-    ownerId, // ✅ IMPORTANT
+    ownerId: donorId, // Set ownerId for backward compatibility
     name,
     description,
     quantity,
     quantity_unit,
     expiry_date,
     distance_km,
+    latitude,
+    longitude,
     image_url,
-    category
+    category,
+    donor: donorId
   });
 
   return medicine;
@@ -78,13 +85,13 @@ const create = async ({
 
 const update = async (id, fields) => {
   if (Object.keys(fields).length === 0) return getById(id);
-  
+
   const medicine = await Medicine.findByIdAndUpdate(
     id,
     { $set: fields },
     { new: true, runValidators: true }
   );
-  
+
   return medicine;
 };
 

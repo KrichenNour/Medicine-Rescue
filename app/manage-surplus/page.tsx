@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EditModal from '../../components/EditModal';
 
@@ -8,12 +8,108 @@ const ManageSurplus: React.FC = () => {
   const router = useRouter();
   const [filter, setFilter] = useState('All');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const items = [
-    { id: 1, name: 'N95 Masks', qty: '100 boxes', expiry: '12/31/2025', status: 'Available', image: 'https://placehold.co/400x400/008080/ffffff?text=N95+Masks' },
-    { id: 2, name: 'Sterile Gauze Pads', qty: '50 boxes', expiry: '06/30/2026', status: 'Pending', image: 'https://placehold.co/400x400/4A90E2/ffffff?text=Gauze+Pads' },
-    { id: 3, name: 'Surgical Gloves', qty: '200 boxes', expiry: '03/15/2027', status: 'Donated', image: 'https://placehold.co/400x400/E0E0E0/333333?text=Surgical+Gloves' },
-  ];
+  const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('token') : null), []);
+
+  useEffect(() => {
+    if (!token) {
+      router.push('/auth');
+      return;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userId = payload.id || payload._id || (payload.user && (payload.user.id || payload.user._id));
+      setCurrentUserId(userId || null);
+    } catch (e) {
+      console.error('Failed to parse token', e);
+      setCurrentUserId(null);
+    }
+  }, [router, token]);
+
+  const fetchMySupplies = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:4000/stock', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      const mapped = (data || []).map((d: any) => {
+        const donorId = d.donor ? (typeof d.donor === 'string' ? d.donor : d.donor._id) : null;
+        return {
+          id: d._id || d.id,
+          name: d.name,
+          qty: `${d.quantity} ${d.quantity_unit || ''}`.trim(),
+          expiry: d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : 'N/A',
+          status: d.status || 'Available',
+          image: d.image_url || 'https://placehold.co/400x400/008080/ffffff?text=Supply',
+          donorId,
+        };
+      });
+
+      const mine = currentUserId ? mapped.filter((i: any) => i.donorId && i.donorId.toString() === currentUserId.toString()) : [];
+      setItems(mine);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMySupplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
+  const handleDelete = async (item: any) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`http://localhost:4000/stock/${item.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        let msg = 'Failed to delete';
+        try {
+          const j = await res.json();
+          msg = j.error || msg;
+        } catch {
+          // ignore
+        }
+        throw new Error(msg);
+      }
+      setItems((prev) => prev.filter((x) => x.id !== item.id));
+      setSelectedItem(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete');
+    }
+  };
+
+  const handleSave = async (item: any, updates: any) => {
+    if (!token) throw new Error('You must be logged in');
+    
+    const res = await fetch(`http://localhost:4000/stock/${item.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update supply');
+    }
+
+    // Refresh the list
+    await fetchMySupplies();
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -36,6 +132,8 @@ const ManageSurplus: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto w-full">
+        {loading && <div className="px-4 md:px-8 py-6 text-sm text-text-muted">Loading your supplies…</div>}
+
         {/* Search */}
         <div className="px-4 md:px-8 mb-4">
           <div className="relative">
@@ -74,12 +172,25 @@ const ManageSurplus: React.FC = () => {
                   {item.status}
                 </span>
               </div>
-              <button
-                onClick={() => setSelectedItem(item)}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 shrink-0"
-              >
-                <span className="material-symbols-outlined text-text-light dark:text-text-dark">edit</span>
-              </button>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  onClick={() => setSelectedItem(item)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Edit"
+                >
+                  <span className="material-symbols-outlined text-text-light dark:text-text-dark">edit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (!confirm(`Delete "${item.name}"?`)) return;
+                    handleDelete(item);
+                  }}
+                  className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
+                  title="Delete"
+                >
+                  <span className="material-symbols-outlined text-red-600">delete</span>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -98,6 +209,8 @@ const ManageSurplus: React.FC = () => {
         <EditModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+          onDelete={handleDelete}
+          onSave={handleSave}
         />
       )}
     </div>
