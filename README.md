@@ -1,58 +1,76 @@
-# MedSurplus Connect
+# 🩺 Medicine Rescue – MedSurplus Connect
 
-An application for connecting medical surplus.
+MedSurplus Connect is a web platform that helps healthcare facilities and individuals redistribute surplus medical supplies to institutions and people in need.  
+Every user can act as both a **donor** (by adding supplies) and a **recipient** (by requesting supplies).
 
-## Getting Started
+---
 
-To run the project locally, follow these steps:
+## 🚀 Features
 
-1.  **Install dependencies:**
+- 🔐 Authentication (Sign up / Log in)
+- 👤 Single user type: each user can donate and request
+- 📦 Add surplus medicines and supplies
+- 🔎 Search and filter available supplies
+- 🗺️ Map view to locate supplies geographically
+- 📨 Messaging between users
+- 📄 Request system to track supply requests
+- 📊 Dashboard for managing supplies and requests
 
-    ```bash
-    npm install
-    ```
+---
+## 🧰 Tech Stack
 
-2.  **Run the development server:**
+### Frontend
+- Next.js (React, App Router)
+- TypeScript
+- Tailwind CSS
+- Leaflet / ArcGIS for maps
 
-    ```bash
-    npm run dev
-    ```
+### Backend
+- Node.js
+- Express.js
+- MongoDB + Mongoose
+- JWT Authentication
 
-    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
+## 🔑 User Flow
 
-To run the BACKEND locally, follow these steps:
+1. User signs up and logs in  
+2. User can add medical supplies (acts as donor)  
+3. User can request supplies from others (acts as recipient)  
+4. Users can chat about a request  
+5. Request status is updated  
 
-1.  **Install Dependencies**
-   Make sure Node.js and npm are installed. Then, in the project folder:
-   npm install
-2.  **Set Up PostgreSQL**
-   *Make sure PostgreSQL is installed and running.
-   *Open a terminal and log in as the PostgreSQL user:
-    
-    psql -U postgres
+---
+## 🗺️ Map Integration
 
-    *Create the database:
-    
-    CREATE DATABASE myapp;
+Uses ArcGIS
+Shows supply locations
+Shows user location
+Route planning to supplies
+---
 
-   *Run migrations to create the tables:
-   
-   \i path/to/backend/migrations/create_user_table.sql
-   
-   \i path/to/backend/migrations/create_requests_table.sql
-   
-   \i path/to/backend/migrations/create_medicine_table.sql
-   
-   ⚠️⚠️ Adjust the paths to match your repo structure.
+## ⚙️ Installation & Setup
 
-3.  **Configure Environment Variables**
-IN .env file in the backend :
+### 1. Clone the project
 
-PG_PASSWORD=*****   # Replace with your PostgreSQL password
+```bash
+git clone https://github.com/your-username/Medicine-Rescue.git
+cd Medicine-Rescue
+```
+### 2. Run Frontend
+```bash
+cd app
+npm install
+npm run dev
 
+```
+### 3. Run Backend
+```bash
+cd backend
+npm install
+npm run dev
 
-4.  **Run the Backend**
-node server.js
+```
 
-
+---
